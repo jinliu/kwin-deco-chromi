@@ -15,42 +15,32 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *********************************************************************/
 
-#include "chromi.h"
-#include "chromiclient.h"
+#ifndef CHROMI_TITLEBAR_H
+#define CHROMI_TITLEBAR_H
 
-extern "C"
-{
-KDE_EXPORT KDecorationFactory* create_factory()
-{
-    return new Chromi::ChromiFactory();
-}
-}
+#include <QWidget>
 
 namespace Chromi
 {
 
-KDecoration* ChromiFactory::createDecoration(KDecorationBridge* bridge)
+class ChromiClient;
+
+class TitleBar : public QWidget
 {
-    return new ChromiClient(bridge, this);
+    //TODO: If the following line is enabled, this is not painted at
+    //all. Don't know why.
+    //Q_OBJECT
+public:
+    TitleBar(ChromiClient* client);
+protected:
+    /*override*/ void paintEvent(QPaintEvent* event);
+private:
+    // Embed this title bar into the application window.
+    void embed();
+    
+    ChromiClient* m_client;
+};
+
 }
 
-bool ChromiFactory::supports(Ability ability) const
-{
-    switch( ability ) {
-        // announce
-    case AbilityAnnounceButtons:
-    case AbilityAnnounceColors:
-        // buttons
-    case AbilityButtonMinimize:
-    case AbilityButtonMaximize:
-    case AbilityButtonClose:
-        // colors
-    case AbilityColorTitleBack: ///< decoration supports titlebar background color
-    case AbilityColorTitleFore: ///< decoration supports titlebar foreground color
-        return true;
-    default:
-        return false;
-    }
-}
-
-} // namespace Chromi
+#endif

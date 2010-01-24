@@ -15,42 +15,42 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *********************************************************************/
 
-#include "chromi.h"
-#include "chromiclient.h"
+#ifndef CHROMI_BUTTON_H
+#define CHROMI_BUTTON_H
 
-extern "C"
-{
-KDE_EXPORT KDecorationFactory* create_factory()
-{
-    return new Chromi::ChromiFactory();
-}
-}
+#include <QAbstractButton>
 
 namespace Chromi
 {
 
-KDecoration* ChromiFactory::createDecoration(KDecorationBridge* bridge)
+class ChromiClient;
+
+class Button : public QAbstractButton
 {
-    return new ChromiClient(bridge, this);
+    Q_OBJECT
+public:
+    enum {
+        MINIMIZE = 'I',
+        MAXIMIZE = 'A',
+        CLOSE = 'X'
+    };
+    
+    Button(char type, ChromiClient* client, QWidget* parent);
+
+    /*override*/ QSize sizeHint() const;
+public slots:
+    void slotMaximize();
+protected:
+    /*override*/ void paintEvent(QPaintEvent* event);
+    /*override*/ void mousePressEvent(QMouseEvent *e);
+    /*override*/ void mouseReleaseEvent(QMouseEvent *e);
+private:
+    char m_type;
+    ChromiClient* m_client;
+    Qt::MouseButtons m_lastMouseButton;
+    int m_realizeButtons;
+};
+
 }
 
-bool ChromiFactory::supports(Ability ability) const
-{
-    switch( ability ) {
-        // announce
-    case AbilityAnnounceButtons:
-    case AbilityAnnounceColors:
-        // buttons
-    case AbilityButtonMinimize:
-    case AbilityButtonMaximize:
-    case AbilityButtonClose:
-        // colors
-    case AbilityColorTitleBack: ///< decoration supports titlebar background color
-    case AbilityColorTitleFore: ///< decoration supports titlebar foreground color
-        return true;
-    default:
-        return false;
-    }
-}
-
-} // namespace Chromi
+#endif
