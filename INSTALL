@@ -1,5 +1,5 @@
-To install this plasmoid check if you have installed the needed header files (kdelibs and kdebase-workspace), 
-unpack the archive, and run the following commands from a shell:
+You need kdelibs6-dev and xorg-dev to build this.
+Unpack the archive, and run the following commands from a shell:
 
 mkdir build
 cd build

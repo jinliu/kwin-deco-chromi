@@ -15,21 +15,24 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *********************************************************************/
 
-#ifndef CHROMICLIENT_H
-#define CHROMICLIENT_H
+#ifndef CHROMI_CLIENT_H
+#define CHROMI_CLIENT_H
 
 #include <kdecoration.h>
+
+class QWidget;
 
 namespace Chromi
 {
 
-class TitleBar;
+class Factory;
 
-class ChromiClient : public KDecoration
+class Client : public KDecoration
 {
     Q_OBJECT
 public:
-    ChromiClient(KDecorationBridge* bridge, KDecorationFactory* factory);
+    Client(KDecorationBridge* bridge, Factory* factory);
+
     /*override*/ void init();
     /*override*/ Position mousePosition(const QPoint& p) const;
     /*override*/ void borders(int& left, int& right, int& top, int& bottom) const;
@@ -44,11 +47,18 @@ public:
     
     /*override*/ bool eventFilter(QObject* o, QEvent* e);
 protected:
-    void paintEvent(QPaintEvent* event);
-    void resizeEvent(QResizeEvent* event);
+    void framePaintEvent(QPaintEvent* event);
+    void frameResizeEvent(QResizeEvent* event);
+    void titleBarPaintEvent(QPaintEvent* event);    
+    bool titleBarMouseEvent(QMouseEvent* event);
+
     bool isMaximized() const;
 private:
-    TitleBar* m_titleBar;
+    Factory* m_factory;
+    QWidget* m_titleBar;
+    QWidget* m_previewWidget;
+    int m_activeButton;
+    int m_hoverButton;
 };
 
 }

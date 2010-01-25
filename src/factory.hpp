@@ -15,30 +15,30 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *********************************************************************/
 
-#ifndef CHROMI_TITLEBAR_H
-#define CHROMI_TITLEBAR_H
+#ifndef CHROMI_FACTORY_H
+#define CHROMI_FACTORY_H
 
-#include <QWidget>
+#include <kdecorationfactory.h>
+#include <KDE/Plasma/FrameSvg>
+#include <QHash>
 
 namespace Chromi
 {
 
-class ChromiClient;
-
-class TitleBar : public QWidget
+class Factory : public QObject, public KDecorationFactory
 {
-    //TODO: If the following line is enabled, this is not painted at
-    //all. Don't know why.
-    //Q_OBJECT
+    Q_OBJECT
 public:
-    TitleBar(ChromiClient* client);
-protected:
-    /*override*/ void paintEvent(QPaintEvent* event);
+    Factory();
+    /*override*/ KDecoration* createDecoration(KDecorationBridge* bridge);
+    /*override*/ bool supports(Ability ability) const;
+
+    void initButtonFrame(const QString& button);
+    Plasma::FrameSvg* frame();
+    Plasma::FrameSvg* button(const QString& b);
 private:
-    // Embed this title bar into the application window.
-    void embed();
-    
-    ChromiClient* m_client;
+    Plasma::FrameSvg m_frame;
+    QHash<QString, Plasma::FrameSvg*> m_buttons;
 };
 
 }
