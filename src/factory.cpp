@@ -46,6 +46,7 @@ Factory::Factory()
 
     initButtonFrame("minimize");
     initButtonFrame("maximize");
+    initButtonFrame("restore");
     initButtonFrame("close");    
 }
 

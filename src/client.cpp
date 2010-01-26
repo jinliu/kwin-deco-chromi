@@ -42,7 +42,7 @@ const int PADDING_BOTTOM = 9;
 const int TITLE_SPACING_LEFT = 12;
 const int TITLE_SPACING_RIGHT = 8;
 
-const char* buttonNames[] = {"minimize", "maximize", "close"};
+const char* buttonNames[] = {"minimize", "maximize", "close", "restore"};
 
 Client::Client(KDecorationBridge* bridge, Factory* factory)
     : KDecoration(bridge, factory),
@@ -284,7 +284,10 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
     int x = m_titleBar->width();
     for (int i=2; i>=0; --i) { // layout right->left
         x -= BUTTON_WIDTH + BUTTON_SPACING;
-        Plasma::FrameSvg* frame = m_factory->button(buttonNames[i]);
+        const char* s = buttonNames[i];
+        if (i==1 && isMaximized())
+            s = buttonNames[3];
+        Plasma::FrameSvg* frame = m_factory->button(s);
         frame->setElementPrefix("active");
         frame->resizeFrame(QSizeF(BUTTON_WIDTH, BUTTON_HEIGHT));
         frame->paintFrame(&painter, QPointF(x, 0));
