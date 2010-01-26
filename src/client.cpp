@@ -62,6 +62,7 @@ void Client::init()
     m_titleBar = new QWidget(widget());
     m_titleBar->setAttribute(Qt::WA_NoSystemBackground);
     m_titleBar->installEventFilter(this);
+    m_titleBar->setMouseTracking(true); // need this for the hover effect
 
     if (isPreview()) {
         m_previewWidget = new QLabel("<center><b>Chromi preview</b></center>", widget());
@@ -284,11 +285,28 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
     int x = m_titleBar->width();
     for (int i=2; i>=0; --i) { // layout right->left
         x -= BUTTON_WIDTH + BUTTON_SPACING;
-        const char* s = buttonNames[i];
+        
+        const char* name = buttonNames[i];
         if (i==1 && isMaximized())
-            s = buttonNames[3];
-        Plasma::FrameSvg* frame = m_factory->button(s);
-        frame->setElementPrefix("active");
+            name = buttonNames[3];
+        Plasma::FrameSvg* frame = m_factory->button(name);
+        
+        QString prefix;
+        if (m_activeButton == i)
+            prefix = "pressed";
+        else if (m_hoverButton == i) {
+            if (isActive())
+                prefix = "hover";
+            else
+                prefix = "hover-inactive";
+        } else {
+            if (isActive())
+                prefix = "active";
+            else
+                prefix = "inactive";
+        }
+        frame->setElementPrefix(prefix);
+        
         frame->resizeFrame(QSizeF(BUTTON_WIDTH, BUTTON_HEIGHT));
         frame->paintFrame(&painter, QPointF(x, 0));
     }
@@ -307,9 +325,11 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
 
 bool Client::titleBarMouseEvent(QMouseEvent* event)
 {
+    QEvent::Type type = event->type();
     QPoint pos = event->pos();
     Qt::MouseButton button = event->button();
-    
+
+    // on buttons?
     int x = m_titleBar->width();
     for (int i=2; i>=0; --i) {
         x -= BUTTON_WIDTH + BUTTON_SPACING;
@@ -318,9 +338,10 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
             w += BUTTON_SPACING;
         QRect r(x, 0, w, BUTTON_HEIGHT);
         if (r.contains(pos)) { // hit button#i
-            switch (event->type()) {
+            switch (type) {
             case QEvent::MouseButtonPress:
                 m_activeButton = i;
+                m_titleBar->update();
                 return true;
             case QEvent::MouseButtonRelease:
                 if (m_activeButton == i)
@@ -338,9 +359,13 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
                         break;
                     }
                 m_activeButton = -1;
-                break;
+                m_titleBar->update();
+                return true;
             case QEvent::MouseMove:
-                m_hoverButton = i;
+                if (m_hoverButton != i) {
+                    m_hoverButton = i;
+                    m_titleBar->update();
+                }
                 return false;
             default:
                 return false;
@@ -349,10 +374,19 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
     }
     
     // doesn't hit any button
-    m_activeButton = m_hoverButton = -1;
-    if (event->type()==QEvent::MouseButtonDblClick
-        && event->button()==Qt::LeftButton)
+
+    // double click on title maximizes
+    if (type==QEvent::MouseButtonDblClick && button==Qt::LeftButton) {
         maximize(Qt::LeftButton);
+        return true;
+    }
+
+    // clear pressed/hover image
+    if (m_activeButton!=-1 || m_hoverButton!=-1) {
+        m_activeButton = m_hoverButton = -1;
+        m_titleBar->update();
+    }
+    
     return false;
 }
 
