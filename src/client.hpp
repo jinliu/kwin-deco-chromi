@@ -53,12 +53,25 @@ protected:
     bool titleBarMouseEvent(QMouseEvent* event);
 
     bool isMaximized() const;
-private:
+    void layoutTitleBar();
+private:   
     Factory* m_factory;
     QWidget* m_titleBar;
     QWidget* m_previewWidget;
     int m_activeButton;
     int m_hoverButton;
+
+    struct ButtonInfo
+    {
+        const char* name;
+        bool enabled;
+        // Where to paint the button image
+        QRect paintRect;
+        // Where mouse click is effective. Can be larger than
+        // paintRect, e.g. when maximized.
+        QRect mouseRect;
+    };
+    ButtonInfo m_button[3];
 };
 
 }

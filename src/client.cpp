@@ -42,8 +42,6 @@ const int PADDING_BOTTOM = 9;
 const int TITLE_SPACING_LEFT = 12;
 const int TITLE_SPACING_RIGHT = 8;
 
-const char* buttonNames[] = {"minimize", "maximize", "close", "restore"};
-
 Client::Client(KDecorationBridge* bridge, Factory* factory)
     : KDecoration(bridge, factory),
       m_factory(factory),
@@ -163,7 +161,7 @@ void Client::iconChange()
 
 void Client::maximizeChange()
 {
-    m_titleBar->update();
+    layoutTitleBar();
 }
 
 void Client::desktopChange()
@@ -258,6 +256,8 @@ void Client::frameResizeEvent(QResizeEvent* event)
     QPolygon p;
     p.putPoints(0, 4, 0,0, w,0, w,h, h/2,h);
     m_titleBar->setMask(p);
+
+    layoutTitleBar();
 }
 
 void Client::titleBarPaintEvent(QPaintEvent* event)
@@ -282,19 +282,18 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
     frame->paintFrame(&painter, r, r.translated(PADDING_LEFT+BORDER_SIZE, PADDING_TOP+BORDER_SIZE));
 
     // buttons
-    int x = m_titleBar->width();
-    for (int i=2; i>=0; --i) { // layout right->left
-        x -= BUTTON_WIDTH + BUTTON_SPACING;
-        
-        const char* name = buttonNames[i];
-        if (i==1 && isMaximized())
-            name = buttonNames[3];
-        Plasma::FrameSvg* frame = m_factory->button(name);
+    for (int i=0; i<3; ++i) {
+        Plasma::FrameSvg* frame = m_factory->button(m_button[i].name);
         
         QString prefix;
-        if (m_activeButton == i)
+        if (!m_button[i].enabled) {
+            if (isActive())
+                prefix = "deactivated";
+            else
+                prefix = "deactivated-inactive";
+        } else if (m_activeButton == i) {
             prefix = "pressed";
-        else if (m_hoverButton == i) {
+        } else if (m_hoverButton == i) {
             if (isActive())
                 prefix = "hover";
             else
@@ -307,13 +306,13 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
         }
         frame->setElementPrefix(prefix);
         
-        frame->resizeFrame(QSizeF(BUTTON_WIDTH, BUTTON_HEIGHT));
-        frame->paintFrame(&painter, QPointF(x, 0));
+        frame->resizeFrame(m_button[i].paintRect.size());
+        frame->paintFrame(&painter, m_button[i].paintRect.topLeft());
     }
 
     // caption
     r.setLeft(TITLE_SPACING_LEFT);
-    r.setRight(x-TITLE_SPACING_RIGHT);
+    r.setRight(m_button[0].paintRect.left()-TITLE_SPACING_RIGHT);
     r.setHeight(BUTTON_HEIGHT);
     painter.setFont(options()->font(isActive()));
     if (isActive())
@@ -330,21 +329,17 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
     Qt::MouseButton button = event->button();
 
     // on buttons?
-    int x = m_titleBar->width();
-    for (int i=2; i>=0; --i) {
-        x -= BUTTON_WIDTH + BUTTON_SPACING;
-        int w = BUTTON_WIDTH;
-        if (i==2 && isMaximized())
-            w += BUTTON_SPACING;
-        QRect r(x, 0, w, BUTTON_HEIGHT);
-        if (r.contains(pos)) { // hit button#i
+    for (int i=0; i<3; ++i) {
+        if (m_button[i].mouseRect.contains(pos)) { // hit button#i
             switch (type) {
             case QEvent::MouseButtonPress:
-                m_activeButton = i;
-                m_titleBar->update();
+                if (m_button[i].enabled) {
+                    m_activeButton = i;
+                    m_titleBar->update();
+                }
                 return true;
             case QEvent::MouseButtonRelease:
-                if (m_activeButton == i)
+                if (m_button[i].enabled && m_activeButton == i)
                     switch (i) {
                     case 0: // minimize
                         if (button == Qt::LeftButton)
@@ -393,6 +388,26 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
 bool Client::isMaximized() const
 {
     return maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows();
+}
+
+void Client::layoutTitleBar()
+{
+    m_button[0].name = "minimize";
+    m_button[0].enabled = isMinimizable();
+    m_button[1].name = isMaximized()?"restore":"maximize";
+    m_button[1].enabled = isMaximizable();
+    m_button[2].name = "close";
+    m_button[2].enabled = isCloseable();
+
+    QRect r(m_titleBar->width()-(BUTTON_WIDTH+BUTTON_SPACING), 0, BUTTON_WIDTH, BUTTON_HEIGHT);
+    for (int i=2; i>=0; --i) {
+        m_button[i].paintRect = m_button[i].mouseRect = r;
+        r.translate(-(BUTTON_WIDTH+BUTTON_SPACING), 0);
+    }
+    if (isMaximized())
+        m_button[2].mouseRect.setRight(m_titleBar->width());
+
+    m_titleBar->update();
 }
 
 } // namespace Chromi
