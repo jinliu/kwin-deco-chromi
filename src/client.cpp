@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "factory.hpp"
 
 #include <KDebug>
+#include <QCursor>
 #include <QLabel>
 #include <QPainter>
 #include <QWidget>
@@ -284,6 +285,7 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
     frame->paintFrame(&painter, r, r.translated(PADDING_LEFT+BORDER_SIZE, PADDING_TOP+BORDER_SIZE));
 
     // buttons
+    QPoint mousePos = m_titleBar->mapFromGlobal(QCursor::pos()); // need this to test hovering
     for (int i=0; i<3; ++i) {
         Plasma::FrameSvg* frame = m_factory->button(m_button[i].name);
         
@@ -295,7 +297,7 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
                 prefix = "deactivated-inactive";
         } else if (m_activeButton == i) {
             prefix = "pressed";
-        } else if (m_hoverButton == i) {
+        } else if (m_button[i].mouseRect.contains(mousePos)) {
             if (isActive())
                 prefix = "hover";
             else
