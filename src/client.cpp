@@ -243,8 +243,10 @@ void Client::frameResizeEvent(QResizeEvent* event)
     int left, right, top, bottom;
     borders(left, right, top, bottom);
     r.adjust(left, top, -right, -bottom);
-    if (m_previewWidget)
+    if (m_previewWidget) {
         m_previewWidget->setGeometry(r);
+        r.moveTo(0, 0);
+    }
     
     if (r.width() > TITLE_BAR_WIDTH)
         r.setLeft(r.left()+r.width()-TITLE_BAR_WIDTH);
