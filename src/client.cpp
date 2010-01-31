@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <QCursor>
 #include <QLabel>
 #include <QPainter>
+#include <QPixmap>
 #include <QWidget>
 #include <QX11Info>
 #include <X11/Xlib.h>
@@ -267,8 +268,9 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
 {
     Q_UNUSED(event);
 
-    QPainter painter(m_titleBar);
-
+    QPixmap buffer(m_titleBar->rect().size());
+    QPainter painter(&buffer);
+    
     // background
     Plasma::FrameSvg* frame = m_factory->frame();
     if (isActive())
@@ -324,6 +326,10 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
     else
         painter.setPen(QColor(255, 255, 255, 200));
     painter.drawText(r, Qt::AlignRight|Qt::TextSingleLine, caption());
+
+    // blt to the real surface
+    QPainter realPainter(m_titleBar);
+    realPainter.drawPixmap(0, 0, buffer);
 }
 
 bool Client::titleBarMouseEvent(QMouseEvent* event)
