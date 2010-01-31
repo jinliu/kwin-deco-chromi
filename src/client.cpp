@@ -380,9 +380,9 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
     
     // doesn't hit any button
 
-    // double click on title maximizes
+    // double click on title
     if (type==QEvent::MouseButtonDblClick && button==Qt::LeftButton) {
-        maximize(Qt::LeftButton);
+        titlebarDblClickOperation();
         return true;
     }
 
