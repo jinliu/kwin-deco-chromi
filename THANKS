@@ -4,6 +4,6 @@ Google Chrome is the inspiration for the embedded title bar concept.
 
 Amir Taaki's "Nitrogen minimal mod" (http://kde-look.org/content/show.php/KDE+4+Nitrogen+minimal+mod?content=109355) showed how to actually embed the title bar. I'd never think it possible before seen it. The embedding code into Client::init() function is borrowed from it.
 
-Anton Petersson makes the beautiful "Chrome Aurorae" theme (http://kde-look.org/content/show.php/Chrome+Aurorae?content=119106), from which I borrowed the decoration images.
+Anton Petersson makes the beautiful "Chrome Aurorae" theme (http://kde-look.org/content/show.php/Chrome+Aurorae?content=119106), where the frame and button images is from.
 
 Martin Gräßlin's "Aurorae Theme Engine" (http://kde-look.org/content/show.php/Aurorae+Theme+Engine?content=107158) taught me how to render SVG. Most of SVG rendering code in client.cpp is borrowed from it. Also, Aurorae achieved so much with so little code, this encouraged me to try make a deco myself.
