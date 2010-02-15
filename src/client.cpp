@@ -65,6 +65,8 @@ void Client::init()
 
     m_titleBar = new QWidget();
     m_titleBar->setAttribute(Qt::WA_NoSystemBackground);
+    m_titleBar->installEventFilter(this);
+    m_titleBar->setMouseTracking(true); // need this for the hover effect
     if (isPreview()) {
         m_previewWidget = new QLabel("<center><b>Chromi preview</b></center>", widget());
         m_previewWidget->setAutoFillBackground(true);
@@ -89,8 +91,6 @@ void Client::init()
         XReparentWindow(QX11Info::display(), m_titleBar->winId(), current, 0, 0);
         m_titleBar->show();
     }
-    m_titleBar->installEventFilter(this);
-    m_titleBar->setMouseTracking(true); // need this for the hover effect
 }
 
 
@@ -373,6 +373,7 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
     // frame->paintFrame(&painter, t,
     //                   t.translated(conf.paddingLeft()+r.width()-conf.borderRight()-m_titleBar->width(),
     //                                conf.paddingTop()+conf.titleEdgeTop()));
+    painter.fillRect(t, options()->color(ColorTitleBar, isActive()));
     frame->resizeFrame(t.adjusted(-(conf.borderLeft()+conf.paddingLeft()),
                                   -(conf.titleEdgeTop()+conf.paddingTop()),
                                   conf.borderRight()+conf.paddingRight(),
@@ -382,6 +383,7 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
                                    conf.paddingTop()+conf.titleEdgeTop()));
 
     // buttons
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     for (int i=0; i<3; ++i) {
         Plasma::FrameSvg* frame = factory()->button(m_button[i].name);
 
