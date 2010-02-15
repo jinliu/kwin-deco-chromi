@@ -341,7 +341,7 @@ void Client::frameResizeEvent(QResizeEvent* event)
         // Shape the left edge of titlebar
         int w=r.width(), h=r.height();
         QPolygon p;
-        p.putPoints(0, 4, 0,0, w,0, w,h, h/2,h);
+        p.putPoints(0, 6, 0,0, w,0, w,h, h/2+6,h, h/2+1,h-3, 3,2);
         m_titleBar->setMask(p);
     }
 
