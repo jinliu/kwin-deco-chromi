@@ -39,7 +39,6 @@ const int TITLE_BAR_WIDTH = 250;
 Client::Client(KDecorationBridge* bridge, Factory* factory)
     : KDecorationUnstable(bridge, factory),
       m_isFullWidth(false),
-      m_factory(factory),
       m_titleBar(NULL),
       m_previewWidget(NULL),
       m_activeButton(-1),
@@ -95,6 +94,12 @@ void Client::init()
 }
 
 
+Factory* Client::factory() const
+{
+    return static_cast<Factory*>(KDecorationUnstable::factory());
+}
+
+
 Client::Position Client::mousePosition(const QPoint& p) const
 {
 // KDecoration::mousePosition is buggy on top and left border, so have
@@ -102,7 +107,7 @@ Client::Position Client::mousePosition(const QPoint& p) const
     if (isMaximized())
         return PositionCenter;
     
-    const ThemeConfig& conf = m_factory->themeConfig();
+    const ThemeConfig& conf = factory()->themeConfig();
     int x=p.x()-conf.paddingLeft();
     int y=p.y()-conf.paddingTop();
     int w=widget()->width()-conf.paddingLeft()-conf.paddingRight();
@@ -146,7 +151,7 @@ Client::Position Client::mousePosition(const QPoint& p) const
 
 void Client::borders(int& left, int& right, int& top, int& bottom) const
 {
-    const ThemeConfig& conf = m_factory->themeConfig();
+    const ThemeConfig& conf = factory()->themeConfig();
     if (isMaximized()) {
         left = right = top = bottom = 0;
     } else {
@@ -162,7 +167,7 @@ void Client::borders(int& left, int& right, int& top, int& bottom) const
 
 void Client::padding(int& left, int& right, int& top, int& bottom) const
 {
-    const ThemeConfig& conf = m_factory->themeConfig();
+    const ThemeConfig& conf = factory()->themeConfig();
     if (isMaximized()) {
         left = right = top = bottom = 0;
     } else {
@@ -281,9 +286,9 @@ void Client::framePaintEvent(QPaintEvent* event)
         return;
     
     QPainter painter(widget());
-    const ThemeConfig& conf = m_factory->themeConfig();
+    const ThemeConfig& conf = factory()->themeConfig();
 
-    Plasma::FrameSvg* frame = m_factory->frame();
+    Plasma::FrameSvg* frame = factory()->frame();
     frame->setElementPrefix("decoration");
     if (!isActive() && frame->hasElementPrefix("decoration-inactive"))
         frame->setElementPrefix("decoration-inactive");
@@ -308,7 +313,7 @@ void Client::frameResizeEvent(QResizeEvent* event)
 {
     Q_UNUSED(event);
     
-    const ThemeConfig& conf = m_factory->themeConfig();
+    const ThemeConfig& conf = factory()->themeConfig();
     
     QRect r(widget()->rect());
     if (!isMaximized())
@@ -347,11 +352,10 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
 
     QPixmap buffer(m_titleBar->size());
     QPainter painter(&buffer);
-    painter.setRenderHint(QPainter::Antialiasing);
-    const ThemeConfig& conf = m_factory->themeConfig();    
+    const ThemeConfig& conf = factory()->themeConfig();    
     
     // background
-    Plasma::FrameSvg* frame = m_factory->frame();
+    Plasma::FrameSvg* frame = factory()->frame();
     if (!isActive() && frame->hasElementPrefix("decoration-inactive"))
         frame->setElementPrefix("decoration-inactive");
     else
@@ -376,7 +380,7 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
 
     // buttons
     for (int i=0; i<3; ++i) {
-        Plasma::FrameSvg* frame = m_factory->button(m_button[i].name);
+        Plasma::FrameSvg* frame = factory()->button(m_button[i].name);
 
         QString prefix = "active";
         if (!isActive() && frame->hasElementPrefix("inactive"))
@@ -520,12 +524,12 @@ void Client::layoutTitleBar()
 {
     m_button[0].name = "minimize";
     m_button[0].enabled = isMinimizable();
-    m_button[1].name = isMaximized()&&m_factory->hasButton("restore")?"restore":"maximize";
+    m_button[1].name = isMaximized()&&factory()->hasButton("restore")?"restore":"maximize";
     m_button[1].enabled = isMaximizable();
     m_button[2].name = "close";
     m_button[2].enabled = isCloseable();
 
-    const ThemeConfig& conf = m_factory->themeConfig();
+    const ThemeConfig& conf = factory()->themeConfig();
     QRect r(m_titleBar->width()-(conf.buttonWidth()+conf.buttonSpacing()),
             conf.buttonMarginTop(), conf.buttonWidth(), conf.buttonHeight());
     for (int i=2; i>=0; --i) {
@@ -563,8 +567,8 @@ void Client::updateWindowShape()
         return;
     }
 
-    const ThemeConfig& conf = m_factory->themeConfig();
-    Plasma::FrameSvg* deco = m_factory->frame();
+    const ThemeConfig& conf = factory()->themeConfig();
+    Plasma::FrameSvg* deco = factory()->frame();
     if (!deco->hasElementPrefix("decoration-opaque")) {
         // opaque element is missing: set generic mask
         w = w - conf.paddingLeft() - conf.paddingRight();

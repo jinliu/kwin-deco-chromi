@@ -48,6 +48,7 @@ public:
     
     /*override*/ void padding(int& left, int& right, int& top, int& bottom) const;
     /*override*/ bool eventFilter(QObject* o, QEvent* e);
+    /*override*/ Factory* factory() const;
 protected:
     void framePaintEvent(QPaintEvent* event);
     void frameResizeEvent(QResizeEvent* event);
@@ -60,7 +61,6 @@ protected:
     void updateWindowShape();
 private:
     bool m_isFullWidth;
-    Factory* m_factory;
     QWidget* m_titleBar;
     QWidget* m_previewWidget;
     int m_activeButton;
