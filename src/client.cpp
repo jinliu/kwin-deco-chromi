@@ -33,7 +33,7 @@ namespace Chromi
 
 
 const int CORNER_SIZE = 20;
-const int TITLE_BAR_WIDTH = 250;
+const int TITLE_BAR_DEFAULT_WIDTH = 250;
 
 
 Client::Client(KDecorationBridge* bridge, Factory* factory)
@@ -66,7 +66,12 @@ void Client::init()
     m_titleBar = new QWidget();
     m_titleBar->setAttribute(Qt::WA_NoSystemBackground);
     m_titleBar->installEventFilter(this);
-    m_titleBar->setMouseTracking(true); // need this for the hover effect
+    // need this for the hover effect
+    m_titleBar->setMouseTracking(true);
+    
+    const ThemeConfig& conf = factory()->themeConfig();
+    m_titleBar->resize(TITLE_BAR_DEFAULT_WIDTH, conf.titleHeight()+conf.titleEdgeBottom());
+    
     if (isPreview()) {
         m_previewWidget = new QLabel("<center><b>Chromi preview</b></center>", widget());
         m_previewWidget->setAutoFillBackground(true);
@@ -248,6 +253,9 @@ bool Client::eventFilter(QObject* o, QEvent* e)
         case QEvent::Paint:
             titleBarPaintEvent(static_cast<QPaintEvent*>(e));
             return true;
+        case QEvent::Resize:
+            layoutTitleBar();
+            return true;
         case QEvent::MouseButtonDblClick:
         case QEvent::MouseButtonPress:
         case QEvent::MouseButtonRelease:
@@ -270,8 +278,17 @@ bool Client::eventFilter(QObject* o, QEvent* e)
             return qApp->sendEvent(widget(), &newEvent);
         }
         case QEvent::Wheel:
-            titlebarMouseWheelOperation(static_cast<QWheelEvent*>(e)->delta());
+        {
+            QWheelEvent& event = *static_cast<QWheelEvent*>(e);
+            if (!m_isFullWidth && (event.modifiers() & Qt::ControlModifier)) {
+                int delta = -event.delta()/10;
+                QRect r = m_titleBar->geometry();
+                r.setLeft(r.left()+delta);
+                m_titleBar->setGeometry(r);
+            } else if (event.modifiers() == Qt::NoModifier)
+                titlebarMouseWheelOperation(event.delta());
             return true;
+        }
         default:
             return false;
         }
@@ -318,34 +335,21 @@ void Client::frameResizeEvent(QResizeEvent* event)
 
     const ThemeConfig& conf = factory()->themeConfig();
 
-    QRect r(widget()->rect());
+    QRectF r(widget()->rect());
     if (!isMaximized())
         r.adjust(conf.borderLeft()+conf.paddingLeft(), conf.titleEdgeTop()+conf.paddingTop(),
                  -(conf.borderRight()+conf.paddingRight()), -(conf.borderBottom()+conf.paddingBottom()));
 
     if (m_previewWidget) {
-        m_previewWidget->setGeometry(r);
+        m_previewWidget->setGeometry(r.toRect());
         r.moveTo(0, 0);
     } else if (!isMaximized() && !m_isFullWidth) {
         r.translate(-conf.paddingLeft(), -conf.paddingTop());
     }
 
-    if (!m_isFullWidth && r.width() > TITLE_BAR_WIDTH)
-        r.setLeft(r.left()+r.width()-TITLE_BAR_WIDTH);
-    int titleBarHeight = conf.titleHeight() + conf.titleEdgeBottom();
-    if (r.height() > titleBarHeight)
-        r.setHeight(titleBarHeight);
-    m_titleBar->setGeometry(r);
-
-    if (!m_isFullWidth) {
-        // Shape the left edge of titlebar
-        int w=r.width(), h=r.height();
-        QPolygon p;
-        p.putPoints(0, 6, 0,0, w,0, w,h, h/2+6,h, h/2+1,h-3, 3,2);
-        m_titleBar->setMask(p);
-    }
-
-    layoutTitleBar();
+    if (m_isFullWidth)
+        m_titleBar->resize(r.width(), m_titleBar->height());
+    m_titleBar->move(r.right()-m_titleBar->width(), r.top());
 }
 
 
@@ -527,6 +531,15 @@ bool Client::isMaximized() const
 
 void Client::layoutTitleBar()
 {
+    if (!m_isFullWidth) {
+        // Shape the left edge of titlebar
+        int w=m_titleBar->width(), h=m_titleBar->height();
+        QPolygon p;
+        p.putPoints(0, 6, 0,0, w,0, w,h, h/2+6,h, h/2+1,h-3, 3,2);
+        m_titleBar->setMask(p);
+    } else
+        m_titleBar->clearMask();
+    
     m_button[0].name = "minimize";
     m_button[0].enabled = isMinimizable();
     m_button[1].name = isMaximized()&&factory()->hasButton("restore")?"restore":"maximize";
