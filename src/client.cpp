@@ -33,13 +33,13 @@ namespace Chromi
 
 
 const int CORNER_SIZE = 20;
-const int TITLE_BAR_DEFAULT_WIDTH = 250;
+const int TITLEBAR_DEFAULT_WIDTH = 250;
 
 
 Client::Client(KDecorationBridge* bridge, Factory* factory)
     : KDecorationUnstable(bridge, factory),
       m_isFullWidth(false),
-      m_titleBar(NULL),
+      m_titlebar(NULL),
       m_previewWidget(NULL),
       m_activeButton(-1),
       m_hoverButton(-1)
@@ -48,14 +48,15 @@ Client::Client(KDecorationBridge* bridge, Factory* factory)
 
 Client::~Client()
 {
-    delete m_titleBar;
+    // Titlebar may have no parent, so we need to explicitly delete it.
+    delete m_titlebar;
 }
 
 
 void Client::init()
 {
     // Fall back to traditional full-width titlebar for all except
-    // top-level windows
+    // top-level windows.
     if (isModal() || windowType(NET::AllTypesMask) != NET::Normal)
         m_isFullWidth = true;
 
@@ -63,23 +64,29 @@ void Client::init()
     widget()->setAttribute(Qt::WA_NoSystemBackground);
     widget()->installEventFilter(this);
 
-    m_titleBar = new QWidget();
-    m_titleBar->setAttribute(Qt::WA_NoSystemBackground);
-    m_titleBar->installEventFilter(this);
+    initTitlebar();
+}
+
+
+void Client::initTitlebar()
+{
+    m_titlebar = new QWidget();
+    m_titlebar->setAttribute(Qt::WA_NoSystemBackground);
+    m_titlebar->installEventFilter(this);
     // need this for the hover effect
-    m_titleBar->setMouseTracking(true);
+    m_titlebar->setMouseTracking(true);
     
     const ThemeConfig& conf = factory()->themeConfig();
-    m_titleBar->resize(TITLE_BAR_DEFAULT_WIDTH, conf.titleHeight()+conf.titleEdgeBottom());
+    m_titlebar->resize(TITLEBAR_DEFAULT_WIDTH, conf.titleHeight()+conf.titleEdgeBottom());
     
     if (isPreview()) {
         m_previewWidget = new QLabel("<center><b>Chromi preview</b></center>", widget());
         m_previewWidget->setAutoFillBackground(true);
-        m_titleBar->setParent(m_previewWidget);
+        m_titlebar->setParent(m_previewWidget);
     } else if (m_isFullWidth)
-        m_titleBar->setParent(widget());
+        m_titlebar->setParent(widget());
     else {
-        // Reparent the title bar to the application window, so we can
+        // Reparent the titlebar to the application window, so we can
         // draw over it.
         WId current = windowId();
         for (;;)
@@ -93,8 +100,8 @@ void Client::init()
             else
                 break;
         }
-        XReparentWindow(QX11Info::display(), m_titleBar->winId(), current, 0, 0);
-        m_titleBar->show();
+        XReparentWindow(QX11Info::display(), m_titlebar->winId(), current, 0, 0);
+        m_titlebar->show();
     }
 }
 
@@ -201,15 +208,16 @@ QSize Client::minimumSize() const
 
 void Client::activeChange()
 {
+    updateTitlebar();
     widget()->update();
-    updateTitleBar();
 }
 
 
 void Client::captionChange()
 {
-    updateTitleBar();
+    updateTitlebar();
 }
+
 
 void Client::iconChange()
 {}
@@ -217,8 +225,8 @@ void Client::iconChange()
 
 void Client::maximizeChange()
 {
-    layoutTitleBar();
-    updateTitleBar();
+    titlebarResizeEvent();
+    updateTitlebar();
 }
 
 
@@ -236,10 +244,10 @@ bool Client::eventFilter(QObject* o, QEvent* e)
         switch(e->type())
         {
         case QEvent::Paint:
-            framePaintEvent(static_cast<QPaintEvent*>(e));
+            framePaintEvent();
             return true;
         case QEvent::Resize:
-            frameResizeEvent(static_cast<QResizeEvent*>(e));
+            frameResizeEvent();
             return true;
         case QEvent::MouseButtonPress:
             processMousePressEvent(static_cast<QMouseEvent*>(e));
@@ -247,21 +255,21 @@ bool Client::eventFilter(QObject* o, QEvent* e)
         default:
             return false;
         }
-    else if (o == m_titleBar)
+    else if (o == m_titlebar)
         switch(e->type())
         {
         case QEvent::Paint:
-            titleBarPaintEvent(static_cast<QPaintEvent*>(e));
+            titlebarPaintEvent();
             return true;
         case QEvent::Resize:
-            layoutTitleBar();
+            titlebarResizeEvent();
             return true;
         case QEvent::MouseButtonDblClick:
         case QEvent::MouseButtonPress:
         case QEvent::MouseButtonRelease:
         case QEvent::MouseMove:
         {
-            if (titleBarMouseEvent(static_cast<QMouseEvent*>(e)))
+            if (titlebarMouseEvent(static_cast<QMouseEvent*>(e)))
                 return true;
             if (m_isFullWidth)
                 return false;
@@ -281,10 +289,11 @@ bool Client::eventFilter(QObject* o, QEvent* e)
         {
             QWheelEvent& event = *static_cast<QWheelEvent*>(e);
             if (!m_isFullWidth && (event.modifiers() & Qt::ControlModifier)) {
+                // Ctrl-wheel changes titlebar width.
                 int delta = -event.delta()/10;
-                QRect r = m_titleBar->geometry();
+                QRect r = m_titlebar->geometry();
                 r.setLeft(r.left()+delta);
-                m_titleBar->setGeometry(r);
+                m_titlebar->setGeometry(r);
             } else if (event.modifiers() == Qt::NoModifier)
                 titlebarMouseWheelOperation(event.delta());
             return true;
@@ -297,10 +306,8 @@ bool Client::eventFilter(QObject* o, QEvent* e)
 }
 
 
-void Client::framePaintEvent(QPaintEvent* event)
+void Client::framePaintEvent()
 {
-    Q_UNUSED(event);
-
     // No border when maximized
     if (isMaximized())
         return;
@@ -323,16 +330,13 @@ void Client::framePaintEvent(QPaintEvent* event)
                         widget()->width(), conf.borderBottom() + conf.paddingBottom(),
                         Qt::UniteClip);
 
-    QRectF r(widget()->rect());
-    frame->resizeFrame(r.size());
-    frame->paintFrame(&painter, r);
+    frame->resizeFrame(widget()->size());
+    frame->paintFrame(&painter, widget()->rect());
 }
 
 
-void Client::frameResizeEvent(QResizeEvent* event)
+void Client::frameResizeEvent()
 {
-    Q_UNUSED(event);
-
     const ThemeConfig& conf = factory()->themeConfig();
 
     QRectF r(widget()->rect());
@@ -343,47 +347,32 @@ void Client::frameResizeEvent(QResizeEvent* event)
     if (m_previewWidget) {
         m_previewWidget->setGeometry(r.toRect());
         r.moveTo(0, 0);
-    } else if (!isMaximized() && !m_isFullWidth) {
+    } else if (!isMaximized() && !m_isFullWidth)
         r.translate(-conf.paddingLeft(), -conf.paddingTop());
-    }
 
     if (m_isFullWidth)
-        m_titleBar->resize(r.width(), m_titleBar->height());
-    m_titleBar->move(r.right()-m_titleBar->width(), r.top());
+        m_titlebar->resize(r.width(), m_titlebar->height());
+    m_titlebar->move(r.right()-m_titlebar->width(), r.top());
 }
 
 
-void Client::titleBarPaintEvent(QPaintEvent* event)
+void Client::titlebarPaintEvent()
 {
-    Q_UNUSED(event);
-
-    QPixmap buffer(m_titleBar->size());
+    QPixmap buffer(m_titlebar->size());
     QPainter painter(&buffer);
     const ThemeConfig& conf = factory()->themeConfig();
 
     // background
+    QRectF r(buffer.rect());
+    painter.fillRect(r, options()->color(ColorTitleBar, isActive()));
+    
     Plasma::FrameSvg* frame = factory()->frame();
+    frame->setElementPrefix("decoration");
     if (!isActive() && frame->hasElementPrefix("decoration-inactive"))
         frame->setElementPrefix("decoration-inactive");
-    else
-        frame->setElementPrefix("decoration");
-
-    QRectF r(widget()->rect());
-    QRectF t(buffer.rect());
-    // Resizing frame to window size makes window resizing very slow,
-    // so let's resize to a fixed size as an performance workaround.
-    // frame->resizeFrame(r.adjusted(-conf.paddingLeft(), -conf.paddingTop(),
-    //                                conf.paddingRight(), conf.paddingBottom()).size());
-    // frame->paintFrame(&painter, t,
-    //                   t.translated(conf.paddingLeft()+r.width()-conf.borderRight()-m_titleBar->width(),
-    //                                conf.paddingTop()+conf.titleEdgeTop()));
-    painter.fillRect(t, options()->color(ColorTitleBar, isActive()));
-    frame->resizeFrame(t.adjusted(-(conf.borderLeft()+conf.paddingLeft()),
-                                  -(conf.titleEdgeTop()+conf.paddingTop()),
-                                  conf.borderRight()+conf.paddingRight(),
-                                  conf.borderBottom()+conf.paddingBottom()).size());
-    frame->paintFrame(&painter, t,
-                      t.translated(conf.paddingLeft()+conf.borderLeft(),
+    frame->resizeFrame(widget()->size());
+    frame->paintFrame(&painter, r,
+                      r.translated(widget()->width()-(conf.paddingRight()+conf.borderRight()+r.width()),
                                    conf.paddingTop()+conf.titleEdgeTop()));
 
     // buttons
@@ -455,11 +444,11 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
     painter.drawText(r, textOpt, caption());
 
     // blt to the real surface
-    QPainter(m_titleBar).drawPixmap(0, 0, buffer);
+    QPainter(m_titlebar).drawPixmap(0, 0, buffer);
 }
 
 
-bool Client::titleBarMouseEvent(QMouseEvent* event)
+bool Client::titlebarMouseEvent(QMouseEvent* event)
 {
     QEvent::Type type = event->type();
     QPoint pos = event->pos();
@@ -472,7 +461,7 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
             case QEvent::MouseButtonPress:
                 if (m_button[i].enabled) {
                     m_activeButton = i;
-                    updateTitleBar();
+                    updateTitlebar();
                 }
                 return true;
             case QEvent::MouseButtonRelease:
@@ -491,12 +480,12 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
                         break;
                     }
                 m_activeButton = -1;
-                updateTitleBar();
+                updateTitlebar();
                 return true;
             case QEvent::MouseMove:
                 if (m_hoverButton != i) {
                     m_hoverButton = i;
-                    updateTitleBar();
+                    updateTitlebar();
                 }
                 return false;
             default:
@@ -507,7 +496,7 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
 
     // doesn't hit any button
 
-    // double click on title
+    // double click on titlebar
     if (type==QEvent::MouseButtonDblClick && button==Qt::LeftButton) {
         titlebarDblClickOperation();
         return true;
@@ -516,7 +505,7 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
     // clear pressed/hover image
     if (m_activeButton!=-1 || m_hoverButton!=-1) {
         m_activeButton = m_hoverButton = -1;
-        updateTitleBar();
+        updateTitlebar();
     }
 
     return false;
@@ -529,16 +518,16 @@ bool Client::isMaximized() const
 }
 
 
-void Client::layoutTitleBar()
+void Client::titlebarResizeEvent()
 {
     if (!m_isFullWidth) {
         // Shape the left edge of titlebar
-        int w=m_titleBar->width(), h=m_titleBar->height();
+        int w=m_titlebar->width(), h=m_titlebar->height();
         QPolygon p;
         p.putPoints(0, 6, 0,0, w,0, w,h, h/2+6,h, h/2+1,h-3, 3,2);
-        m_titleBar->setMask(p);
+        m_titlebar->setMask(p);
     } else
-        m_titleBar->clearMask();
+        m_titlebar->clearMask();
     
     m_button[0].name = "minimize";
     m_button[0].enabled = isMinimizable();
@@ -548,7 +537,7 @@ void Client::layoutTitleBar()
     m_button[2].enabled = isCloseable();
 
     const ThemeConfig& conf = factory()->themeConfig();
-    QRect r(m_titleBar->width()-(conf.buttonWidth()+conf.buttonSpacing()),
+    QRect r(m_titlebar->width()-(conf.buttonWidth()+conf.buttonSpacing()),
             conf.buttonMarginTop(), conf.buttonWidth(), conf.buttonHeight());
     for (int i=2; i>=0; --i) {
         m_button[i].paintRect = m_button[i].mouseRect = r;
@@ -557,20 +546,20 @@ void Client::layoutTitleBar()
         r.translate(-(conf.buttonWidth()+conf.buttonSpacing()), 0);
     }
     if (isMaximized())
-        m_button[2].mouseRect.setRight(m_titleBar->width());
+        m_button[2].mouseRect.setRight(m_titlebar->width());
 }
 
 
-void Client::updateTitleBar()
+void Client::updateTitlebar()
 {
     if (m_isFullWidth)
         // If titlebar is parented to widget(), calling
-        // m_titleBar->update() seems to have no effect at all. So we
+        // m_titlebar->update() seems to have no effect at all. So we
         // have to update the whole decoration. This is quite
         // expensive. :-(
         widget()->update();
     else
-        m_titleBar->update();
+        m_titlebar->update();
 }
 
 

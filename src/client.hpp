@@ -50,18 +50,19 @@ public:
     /*override*/ bool eventFilter(QObject* o, QEvent* e);
     /*override*/ Factory* factory() const;
 protected:
-    void framePaintEvent(QPaintEvent* event);
-    void frameResizeEvent(QResizeEvent* event);
-    void titleBarPaintEvent(QPaintEvent* event);    
-    bool titleBarMouseEvent(QMouseEvent* event);
+    void framePaintEvent();
+    void frameResizeEvent();
+    void titlebarPaintEvent();
+    void titlebarResizeEvent();
+    bool titlebarMouseEvent(QMouseEvent* event);
 
     bool isMaximized() const;
-    void layoutTitleBar();
-    void updateTitleBar();
+    void initTitlebar();
+    void updateTitlebar();
     void updateWindowShape();
 private:
     bool m_isFullWidth;
-    QWidget* m_titleBar;
+    QWidget* m_titlebar;
     QWidget* m_previewWidget;
     int m_activeButton;
     int m_hoverButton;
