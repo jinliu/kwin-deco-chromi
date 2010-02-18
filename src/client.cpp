@@ -20,13 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <KDebug>
 #include <QCursor>
+#include <QCoreApplication>
 #include <QLabel>
 #include <QPainter>
 #include <QPixmap>
 #include <QWidget>
 #include <QX11Info>
 #include <X11/Xlib.h>
-
 
 namespace Chromi
 {
@@ -47,6 +47,12 @@ Client::Client(KDecorationBridge* bridge, Factory* factory)
 {}
 
 
+Client::~Client()
+{
+    delete m_titleBar;
+}
+
+
 void Client::init()
 {
     // Fall back to traditional full-width titlebar for all except
@@ -58,13 +64,15 @@ void Client::init()
     widget()->setAttribute(Qt::WA_NoSystemBackground);
     widget()->installEventFilter(this);
 
-    m_titleBar = new QWidget(widget());
+    m_titleBar = new QWidget();
     m_titleBar->setAttribute(Qt::WA_NoSystemBackground);
     if (isPreview()) {
         m_previewWidget = new QLabel("<center><b>Chromi preview</b></center>", widget());
         m_previewWidget->setAutoFillBackground(true);
         m_titleBar->setParent(m_previewWidget);
-    } else if (!m_isFullWidth) {
+    } else if (m_isFullWidth)
+        m_titleBar->setParent(widget());
+    else {
         // Reparent the title bar to the application window, so we can
         // draw over it.
         WId current = windowId();
@@ -80,6 +88,7 @@ void Client::init()
                 break;
         }
         XReparentWindow(QX11Info::display(), m_titleBar->winId(), current, 0, 0);
+        m_titleBar->show();
     }
     m_titleBar->installEventFilter(this);
     m_titleBar->setMouseTracking(true); // need this for the hover effect
@@ -141,13 +150,27 @@ void Client::borders(int& left, int& right, int& top, int& bottom) const
     if (isMaximized()) {
         left = right = top = bottom = 0;
     } else {
-        left = conf.borderLeft()+conf.paddingLeft();
-        right = conf.borderRight()+conf.paddingRight();
-        bottom = conf.borderBottom()+conf.paddingBottom();
-        top = conf.titleEdgeTop()+conf.paddingTop();
+        left = conf.borderLeft();
+        right = conf.borderRight();
+        bottom = conf.borderBottom();
+        top = conf.titleEdgeTop();
     }
     if (isPreview() || m_isFullWidth)
         top += conf.titleHeight()+conf.titleEdgeBottom();
+}
+
+
+void Client::padding(int& left, int& right, int& top, int& bottom) const
+{
+    const ThemeConfig& conf = m_factory->themeConfig();
+    if (isMaximized()) {
+        left = right = top = bottom = 0;
+    } else {
+        left = conf.paddingLeft();
+        right = conf.paddingRight();
+        bottom = conf.paddingBottom();
+        top = conf.paddingTop();
+    }
 }
 
 
@@ -224,7 +247,23 @@ bool Client::eventFilter(QObject* o, QEvent* e)
         case QEvent::MouseButtonPress:
         case QEvent::MouseButtonRelease:
         case QEvent::MouseMove:
-            return titleBarMouseEvent(static_cast<QMouseEvent*>(e));
+        {
+            if (titleBarMouseEvent(static_cast<QMouseEvent*>(e)))
+                return true;
+            if (m_isFullWidth)
+                return false;
+            // Pass mouse event to widget() where moving/window menu
+            // is handled. Because titlebar is not child of widget(),
+            // we need to translate the mouse pos.
+            QMouseEvent& oldEvent = *static_cast<QMouseEvent*>(e);
+            QMouseEvent newEvent(oldEvent.type(),
+                                 widget()->mapFromGlobal(oldEvent.globalPos()),
+                                 oldEvent.globalPos(),
+                                 oldEvent.button(),
+                                 oldEvent.buttons(),
+                                 oldEvent.modifiers());
+            return qApp->sendEvent(widget(), &newEvent);
+        }
         default:
             return false;
         }
@@ -279,15 +318,17 @@ void Client::frameResizeEvent(QResizeEvent* event)
     if (m_previewWidget) {
         m_previewWidget->setGeometry(r);
         r.moveTo(0, 0);
+    } else if (!isMaximized() && !m_isFullWidth) {
+        r.translate(-conf.paddingLeft(), -conf.paddingTop());
     }
-    
+
     if (!m_isFullWidth && r.width() > TITLE_BAR_WIDTH)
         r.setLeft(r.left()+r.width()-TITLE_BAR_WIDTH);
     int titleBarHeight = conf.titleHeight() + conf.titleEdgeBottom();
     if (r.height() > titleBarHeight)
         r.setHeight(titleBarHeight);
     m_titleBar->setGeometry(r);
-
+    
     if (!m_isFullWidth) {
         // Shape the left edge of titlebar
         int w=r.width(), h=r.height();

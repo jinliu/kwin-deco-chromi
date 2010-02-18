@@ -32,6 +32,7 @@ class Client : public KDecorationUnstable
     Q_OBJECT
 public:
     Client(KDecorationBridge* bridge, Factory* factory);
+    ~Client();
 
     /*override*/ void init();
     /*override*/ Position mousePosition(const QPoint& p) const;
@@ -45,6 +46,7 @@ public:
     /*override*/ void desktopChange();
     /*override*/ void shadeChange();
     
+    /*override*/ void padding(int& left, int& right, int& top, int& bottom) const;
     /*override*/ bool eventFilter(QObject* o, QEvent* e);
 protected:
     void framePaintEvent(QPaintEvent* event);
