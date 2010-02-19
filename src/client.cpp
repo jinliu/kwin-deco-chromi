@@ -413,11 +413,7 @@ void Client::titlebarPaintEvent()
     r.setRight(m_button[0].paintRect.left()-conf.titleBorderRight());
     r.setHeight(conf.titleHeight()+conf.titleEdgeBottom());
     painter.setFont(options()->font(isActive()));
-    int textOpt = conf.verticalAlignment()|Qt::TextSingleLine;
-    if (m_isFullWidth)
-        textOpt |= conf.alignment();
-    else
-        textOpt |= Qt::AlignRight;
+    int textOpt = Qt::AlignRight | conf.verticalAlignment() | Qt::TextSingleLine;
     if (conf.useTextShadow()) {
         // shadow code is inspired by Qt FAQ: How can I draw shadows behind text?
         // see http://www.qtsoftware.com/developer/faqs/faq.2007-07-27.3052836051

@@ -144,6 +144,7 @@ bool Factory::supports(Ability ability) const
         return m_buttons.contains("alldesktops");
     case AbilityButtonHelp:
         return m_buttons.contains("help");
+        // composition
     case AbilityProvidesShadow:
         return m_themeConfig.shadow();
     case AbilityUsesAlphaChannel:
