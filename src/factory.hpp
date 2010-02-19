@@ -18,6 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef CHROMI_FACTORY_H
 #define CHROMI_FACTORY_H
 
+#include "themeconfig.h"
+
 #include <kdecorationfactory.h>
 #include <KDE/Plasma/FrameSvg>
 #include <QHash>
@@ -25,20 +27,31 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace Chromi
 {
 
+using Aurorae::ThemeConfig;
+
 class Factory : public QObject, public KDecorationFactory
 {
     Q_OBJECT
 public:
     Factory();
     /*override*/ KDecoration* createDecoration(KDecorationBridge* bridge);
+    /*override*/ bool reset(unsigned long changed);
     /*override*/ bool supports(Ability ability) const;
 
-    void initButtonFrame(const QString& button);
-    Plasma::FrameSvg* frame();
+    Plasma::FrameSvg* frame() { return &m_frame; }
     Plasma::FrameSvg* button(const QString& b);
+    bool hasButton(const QString& button) const { return m_buttons.contains(button); }
+    
+    const ThemeConfig& themeConfig() const { return m_themeConfig; }
 private:
+    void init();
+    void initButtonFrame(const QString& button);
+
     Plasma::FrameSvg m_frame;
     QHash<QString, Plasma::FrameSvg*> m_buttons;
+
+    QString m_themeName;
+    ThemeConfig m_themeConfig;    
 };
 
 }

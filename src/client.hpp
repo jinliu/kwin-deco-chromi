@@ -27,7 +27,7 @@ namespace Chromi
 
 class Factory;
 
-class Client : public KDecoration
+class Client : public KDecorationUnstable
 {
     Q_OBJECT
 public:
@@ -54,7 +54,10 @@ protected:
 
     bool isMaximized() const;
     void layoutTitleBar();
-private:   
+    void updateTitleBar();
+    void updateWindowShape();
+private:
+    bool m_isFullWidth;
     Factory* m_factory;
     QWidget* m_titleBar;
     QWidget* m_previewWidget;

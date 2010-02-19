@@ -27,25 +27,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <QX11Info>
 #include <X11/Xlib.h>
 
+
 namespace Chromi
 {
 
-const int BORDER_SIZE = 4;
+
 const int CORNER_SIZE = 20;
 const int TITLE_BAR_WIDTH = 250;
-const int TITLE_BAR_HEIGHT = 20;
-const int BUTTON_WIDTH = 24;
-const int BUTTON_HEIGHT = 18;
-const int BUTTON_SPACING = 2;
-const int PADDING_LEFT = 9;
-const int PADDING_TOP = 8;
-const int PADDING_RIGHT = 9;
-const int PADDING_BOTTOM = 9;
-const int TITLE_SPACING_LEFT = 12;
-const int TITLE_SPACING_RIGHT = 8;
+
 
 Client::Client(KDecorationBridge* bridge, Factory* factory)
-    : KDecoration(bridge, factory),
+    : KDecorationUnstable(bridge, factory),
+      m_isFullWidth(false),
       m_factory(factory),
       m_titleBar(NULL),
       m_previewWidget(NULL),
@@ -53,22 +46,25 @@ Client::Client(KDecorationBridge* bridge, Factory* factory)
       m_hoverButton(-1)
 {}
 
+
 void Client::init()
 {
+    // Fall back to traditional full-width titlebar for all except
+    // top-level windows
+    if (isModal() || windowType(NET::AllTypesMask) != NET::Normal)
+        m_isFullWidth = true;
+    
     createMainWidget();
     widget()->setAttribute(Qt::WA_NoSystemBackground);
     widget()->installEventFilter(this);
 
     m_titleBar = new QWidget(widget());
     m_titleBar->setAttribute(Qt::WA_NoSystemBackground);
-    m_titleBar->installEventFilter(this);
-    m_titleBar->setMouseTracking(true); // need this for the hover effect
-
     if (isPreview()) {
         m_previewWidget = new QLabel("<center><b>Chromi preview</b></center>", widget());
         m_previewWidget->setAutoFillBackground(true);
         m_titleBar->setParent(m_previewWidget);
-    } else {    
+    } else if (!m_isFullWidth) {
         // Reparent the title bar to the application window, so we can
         // draw over it.
         WId current = windowId();
@@ -85,43 +81,51 @@ void Client::init()
         }
         XReparentWindow(QX11Info::display(), m_titleBar->winId(), current, 0, 0);
     }
+    m_titleBar->installEventFilter(this);
+    m_titleBar->setMouseTracking(true); // need this for the hover effect
 }
+
 
 Client::Position Client::mousePosition(const QPoint& p) const
 {
 // KDecoration::mousePosition is buggy on top and left border, so have
 // to implement our own version.
-    int x=p.x(), y=p.y();
-    int width=widget()->size().width(), height=widget()->size().height();
-    int left, right, top, bottom;
-    borders(left, right, top, bottom);
+    if (isMaximized())
+        return PositionCenter;
+    
+    const ThemeConfig& conf = m_factory->themeConfig();
+    int x=p.x()-conf.paddingLeft();
+    int y=p.y()-conf.paddingTop();
+    int w=widget()->width()-conf.paddingLeft()-conf.paddingRight();
+    int h=widget()->height()-conf.paddingTop()-conf.paddingBottom();
 
     Position pos = PositionCenter;
-    if (x>=0 && x<left) { // left
+    if (x<0 || x>=w || y<0 || y>=w) {
+    } else if (x>=0 && x<conf.borderLeft()) { // left
         if (y>=0 && y<CORNER_SIZE)
             pos = PositionTopLeft;
-        else if (y>=height-CORNER_SIZE && y<height)
+        else if (y>=h-CORNER_SIZE && y<h)
             pos = PositionBottomLeft;
-        else
+        else if (y>=CORNER_SIZE && y<h-CORNER_SIZE)
             pos = PositionLeft;
-    } else if (x>=width-right && x<width) { // right
+    } else if (x>=w-conf.borderRight() && x<w) { // right
         if (y>=0 && y<CORNER_SIZE)
             pos = PositionTopRight;
-        else if (y>=height-CORNER_SIZE && y<height)
+        else if (y>=h-CORNER_SIZE && y<h)
             pos = PositionBottomRight;
         else
             pos = PositionRight;
-    } else if (y>=0 && y<top) { // top
+    } else if (y>=0 && y<conf.titleEdgeTop()) { // top
         if (x>=0 && x<CORNER_SIZE)
             pos = PositionTopLeft;
-        else if (x>=width-CORNER_SIZE && x<width)
+        else if (x>=w-CORNER_SIZE && x<w)
             pos = PositionTopRight;
         else
             pos = PositionTop;
-    } else if (y>=height-bottom && y<height) { // bottom
+    } else if (y>=h-conf.borderBottom() && y<h) { // bottom
         if (x>=0 && x<CORNER_SIZE)
             pos = PositionBottomLeft;
-        else if (x>=width-CORNER_SIZE && x<width)
+        else if (x>=w-CORNER_SIZE && x<w)
             pos = PositionBottomRight;
         else
             pos = PositionBottom;
@@ -130,15 +134,29 @@ Client::Position Client::mousePosition(const QPoint& p) const
     return pos;
 }
 
+
 void Client::borders(int& left, int& right, int& top, int& bottom) const
 {
-    left = right = top = bottom = (isMaximized() ? 0 : BORDER_SIZE);
+    const ThemeConfig& conf = m_factory->themeConfig();
+    if (isMaximized()) {
+        left = right = top = bottom = 0;
+    } else {
+        left = conf.borderLeft()+conf.paddingLeft();
+        right = conf.borderRight()+conf.paddingRight();
+        bottom = conf.borderBottom()+conf.paddingBottom();
+        top = conf.titleEdgeTop()+conf.paddingTop();
+    }
+    if (isPreview() || m_isFullWidth)
+        top += conf.titleHeight()+conf.titleEdgeBottom();
 }
+
 
 void Client::resize(const QSize& s)
 {
     widget()->resize(s);
+    updateWindowShape();
 }
+
 
 QSize Client::minimumSize() const
 {
@@ -147,30 +165,37 @@ QSize Client::minimumSize() const
     return QSize(left+right, top+bottom);
 }
 
+
 void Client::activeChange()
 {
     widget()->update();
-    m_titleBar->update();
+    updateTitleBar();
 }
+
 
 void Client::captionChange()
 {
-    m_titleBar->update();
+    updateTitleBar();
 }
 
 void Client::iconChange()
 {}
 
+
 void Client::maximizeChange()
 {
     layoutTitleBar();
+    updateTitleBar();
 }
+
 
 void Client::desktopChange()
 {}
 
+
 void Client::shadeChange()
 {}
+
 
 bool Client::eventFilter(QObject* o, QEvent* e)
 {
@@ -207,6 +232,7 @@ bool Client::eventFilter(QObject* o, QEvent* e)
         return false;
 }
 
+
 void Client::framePaintEvent(QPaintEvent* event)
 {
     Q_UNUSED(event);
@@ -216,99 +242,121 @@ void Client::framePaintEvent(QPaintEvent* event)
         return;
     
     QPainter painter(widget());
+    const ThemeConfig& conf = m_factory->themeConfig();
 
     Plasma::FrameSvg* frame = m_factory->frame();
-    if (isActive())
-        frame->setElementPrefix("decoration");
-    else
+    frame->setElementPrefix("decoration");
+    if (!isActive() && frame->hasElementPrefix("decoration-inactive"))
         frame->setElementPrefix("decoration-inactive");
 
     // restrict painting on the decoration - no need to paint behind the window
-    int left, right, top, bottom;
-    borders(left, right, top, bottom);
-    painter.setClipping(true);
-    painter.setClipRect(0, 0, left, height(), Qt::ReplaceClip);
-    painter.setClipRect(0, 0, width(), top, Qt::UniteClip);
-    painter.setClipRect(width()-right, 0, right, height(), Qt::UniteClip);
-    painter.setClipRect(0, height()-bottom, width(), bottom, Qt::UniteClip);
+    painter.setClipRect(0, 0, conf.borderLeft() + conf.paddingLeft(), widget()->height(), Qt::ReplaceClip);
+    painter.setClipRect(0, 0, widget()->width(), conf.titleEdgeTop() + conf.paddingTop(), Qt::UniteClip);
+    painter.setClipRect(widget()->width() - conf.borderRight() - conf.paddingRight(), 0,
+                        conf.borderRight() + conf.paddingRight(), widget()->height(),
+                        Qt::UniteClip);
+    painter.setClipRect(0, widget()->height() - conf.borderBottom() - conf.paddingBottom(),
+                        widget()->width(), conf.borderBottom() + conf.paddingBottom(),
+                        Qt::UniteClip);
     
     QRectF r(widget()->rect());
-    frame->resizeFrame(r.adjusted(-9, -8, 9, 9).size());
-    frame->paintFrame(&painter, r, r.translated(9, 8));
+    frame->resizeFrame(r.size());
+    frame->paintFrame(&painter, r);
 }
+
 
 void Client::frameResizeEvent(QResizeEvent* event)
 {
     Q_UNUSED(event);
     
-    QRect r = widget()->rect();
-    int left, right, top, bottom;
-    borders(left, right, top, bottom);
-    r.adjust(left, top, -right, -bottom);
+    const ThemeConfig& conf = m_factory->themeConfig();
+    
+    QRect r(widget()->rect());
+    if (!isMaximized())
+        r.adjust(conf.borderLeft()+conf.paddingLeft(), conf.titleEdgeTop()+conf.paddingTop(),
+                 -(conf.borderRight()+conf.paddingRight()), -(conf.borderBottom()+conf.paddingBottom()));
+    
     if (m_previewWidget) {
         m_previewWidget->setGeometry(r);
         r.moveTo(0, 0);
     }
     
-    if (r.width() > TITLE_BAR_WIDTH)
+    if (!m_isFullWidth && r.width() > TITLE_BAR_WIDTH)
         r.setLeft(r.left()+r.width()-TITLE_BAR_WIDTH);
-    if (r.height() > TITLE_BAR_HEIGHT)
-        r.setBottom(r.top()+TITLE_BAR_HEIGHT);
+    int titleBarHeight = conf.titleHeight() + conf.titleEdgeBottom();
+    if (r.height() > titleBarHeight)
+        r.setHeight(titleBarHeight);
     m_titleBar->setGeometry(r);
 
-    int w=r.width(), h=r.height();
-    QPolygon p;
-    p.putPoints(0, 4, 0,0, w,0, w,h, h/2,h);
-    m_titleBar->setMask(p);
+    if (!m_isFullWidth) {
+        // Shape the left edge of titlebar
+        int w=r.width(), h=r.height();
+        QPolygon p;
+        p.putPoints(0, 4, 0,0, w,0, w,h, h/2,h);
+        m_titleBar->setMask(p);
+    }
 
     layoutTitleBar();
 }
+
 
 void Client::titleBarPaintEvent(QPaintEvent* event)
 {
     Q_UNUSED(event);
 
-    QPixmap buffer(m_titleBar->rect().size());
+    QPixmap buffer(m_titleBar->size());
     QPainter painter(&buffer);
+    painter.setRenderHint(QPainter::Antialiasing);
+    const ThemeConfig& conf = m_factory->themeConfig();    
     
     // background
     Plasma::FrameSvg* frame = m_factory->frame();
-    if (isActive())
-        frame->setElementPrefix("decoration");
-    else
+    if (!isActive() && frame->hasElementPrefix("decoration-inactive"))
         frame->setElementPrefix("decoration-inactive");
+    else
+        frame->setElementPrefix("decoration");
     
-    QRectF r(m_titleBar->rect());
-    frame->resizeFrame(r.adjusted(-(PADDING_LEFT+BORDER_SIZE),
-                                  -(PADDING_TOP+BORDER_SIZE),
-                                  PADDING_RIGHT+BORDER_SIZE,
-                                  PADDING_BOTTOM+BORDER_SIZE)
-                                  .size());
-    frame->paintFrame(&painter, r, r.translated(PADDING_LEFT+BORDER_SIZE, PADDING_TOP+BORDER_SIZE));
+    QRectF r(widget()->rect());
+    QRectF t(buffer.rect());
+    // Resizing frame to window size makes window resizing very slow,
+    // so let's resize to a fixed size as an performance workaround.
+    // frame->resizeFrame(r.adjusted(-conf.paddingLeft(), -conf.paddingTop(),
+    //                                conf.paddingRight(), conf.paddingBottom()).size());
+    // frame->paintFrame(&painter, t,
+    //                   t.translated(conf.paddingLeft()+r.width()-conf.borderRight()-m_titleBar->width(),
+    //                                conf.paddingTop()+conf.titleEdgeTop()));
+    frame->resizeFrame(t.adjusted(-(conf.borderLeft()+conf.paddingLeft()),
+                                  -(conf.titleEdgeTop()+conf.paddingTop()),
+                                  conf.borderRight()+conf.paddingRight(),
+                                  conf.borderBottom()+conf.paddingBottom()).size());
+    frame->paintFrame(&painter, t,
+                      t.translated(conf.paddingLeft()+conf.borderLeft(),
+                                   conf.paddingTop()+conf.titleEdgeTop()));
 
     // buttons
-    QPoint mousePos = m_titleBar->mapFromGlobal(QCursor::pos()); // need this to test hovering
     for (int i=0; i<3; ++i) {
         Plasma::FrameSvg* frame = m_factory->button(m_button[i].name);
-        
-        QString prefix;
-        if (!m_button[i].enabled) {
-            if (isActive())
-                prefix = "deactivated";
-            else
-                prefix = "deactivated-inactive";
-        } else if (m_activeButton == i) {
-            prefix = "pressed";
-        } else if (m_button[i].mouseRect.contains(mousePos)) {
-            if (isActive())
+
+        QString prefix = "active";
+        if (!isActive() && frame->hasElementPrefix("inactive"))
+            prefix = "inactive";
+        if (m_hoverButton == i) {
+            if (frame->hasElementPrefix("hover"))
                 prefix = "hover";
-            else
+            if (!isActive() && frame->hasElementPrefix("hover-inactive"))
                 prefix = "hover-inactive";
-        } else {
-            if (isActive())
-                prefix = "active";
-            else
-                prefix = "inactive";
+        }
+        if (m_activeButton == i) {
+            if (frame->hasElementPrefix("pressed"))
+                prefix = "pressed";
+            if (!isActive() && frame->hasElementPrefix("pressed-inactive"))
+                prefix = "pressed-inactive";
+        }
+        if (!m_button[i].enabled) {
+            if (frame->hasElementPrefix("deactivated"))
+                prefix = "deactivated";
+            if (!isActive() && frame->hasElementPrefix("deactivated-inactive"))
+                prefix = "deactivated-inactive";
         }
         frame->setElementPrefix(prefix);
         
@@ -317,20 +365,45 @@ void Client::titleBarPaintEvent(QPaintEvent* event)
     }
 
     // caption
-    r.setLeft(TITLE_SPACING_LEFT);
-    r.setRight(m_button[0].paintRect.left()-TITLE_SPACING_RIGHT);
-    r.setHeight(BUTTON_HEIGHT);
+    if (m_isFullWidth)
+        r.setLeft(conf.titleBorderLeft());
+    r.setRight(m_button[0].paintRect.left()-conf.titleBorderRight());
+    r.setHeight(conf.titleHeight()+conf.titleEdgeBottom());
     painter.setFont(options()->font(isActive()));
-    if (isActive())
-        painter.setPen(QColor(255, 255, 255, 255));
+    int textOpt = conf.verticalAlignment()|Qt::TextSingleLine;
+    if (m_isFullWidth)
+        textOpt |= conf.alignment();
     else
-        painter.setPen(QColor(255, 255, 255, 200));
-    painter.drawText(r, Qt::AlignRight|Qt::TextSingleLine, caption());
-
+        textOpt |= Qt::AlignRight;
+    if (conf.useTextShadow()) {
+        // shadow code is inspired by Qt FAQ: How can I draw shadows behind text?
+        // see http://www.qtsoftware.com/developer/faqs/faq.2007-07-27.3052836051
+        painter.save();
+        if (isActive())
+            painter.setPen(conf.activeTextShadowColor());
+        else
+            painter.setPen(conf.inactiveTextShadowColor());
+        int dx = conf.textShadowOffsetX();
+        int dy = conf.textShadowOffsetY();
+        painter.setOpacity(0.5);
+        painter.drawText(r.translated(dx, dy), textOpt, caption());
+        painter.setOpacity(0.2);
+        painter.drawText(r.translated(dx+1, dy), textOpt, caption());
+        painter.drawText(r.translated(dx-1, dy), textOpt, caption());
+        painter.drawText(r.translated(dx, dy+1), textOpt, caption());
+        painter.drawText(r.translated(dx, dy-1), textOpt, caption());
+        painter.restore();
+    }
+    if (isActive())
+        painter.setPen(conf.activeTextColor());
+    else
+        painter.setPen(conf.inactiveTextColor());
+    painter.drawText(r, textOpt, caption());
+    
     // blt to the real surface
-    QPainter realPainter(m_titleBar);
-    realPainter.drawPixmap(0, 0, buffer);
+    QPainter(m_titleBar).drawPixmap(0, 0, buffer);
 }
+
 
 bool Client::titleBarMouseEvent(QMouseEvent* event)
 {
@@ -345,7 +418,7 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
             case QEvent::MouseButtonPress:
                 if (m_button[i].enabled) {
                     m_activeButton = i;
-                    m_titleBar->update();
+                    updateTitleBar();
                 }
                 return true;
             case QEvent::MouseButtonRelease:
@@ -364,12 +437,12 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
                         break;
                     }
                 m_activeButton = -1;
-                m_titleBar->update();
+                updateTitleBar();
                 return true;
             case QEvent::MouseMove:
                 if (m_hoverButton != i) {
                     m_hoverButton = i;
-                    m_titleBar->update();
+                    updateTitleBar();
                 }
                 return false;
             default:
@@ -389,36 +462,83 @@ bool Client::titleBarMouseEvent(QMouseEvent* event)
     // clear pressed/hover image
     if (m_activeButton!=-1 || m_hoverButton!=-1) {
         m_activeButton = m_hoverButton = -1;
-        m_titleBar->update();
+        updateTitleBar();
     }
     
     return false;
 }
+
 
 bool Client::isMaximized() const
 {
     return maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows();
 }
 
+
 void Client::layoutTitleBar()
 {
     m_button[0].name = "minimize";
     m_button[0].enabled = isMinimizable();
-    m_button[1].name = isMaximized()?"restore":"maximize";
+    m_button[1].name = isMaximized()&&m_factory->hasButton("restore")?"restore":"maximize";
     m_button[1].enabled = isMaximizable();
     m_button[2].name = "close";
     m_button[2].enabled = isCloseable();
 
-    QRect r(m_titleBar->width()-(BUTTON_WIDTH+BUTTON_SPACING), 0, BUTTON_WIDTH, BUTTON_HEIGHT);
+    const ThemeConfig& conf = m_factory->themeConfig();
+    QRect r(m_titleBar->width()-(conf.buttonWidth()+conf.buttonSpacing()),
+            conf.buttonMarginTop(), conf.buttonWidth(), conf.buttonHeight());
     for (int i=2; i>=0; --i) {
         m_button[i].paintRect = m_button[i].mouseRect = r;
-        r.translate(-(BUTTON_WIDTH+BUTTON_SPACING), 0);
+        if (isMaximized())
+            m_button[i].mouseRect.setTop(0);
+        r.translate(-(conf.buttonWidth()+conf.buttonSpacing()), 0);            
     }
     if (isMaximized())
         m_button[2].mouseRect.setRight(m_titleBar->width());
-
-    m_titleBar->update();
 }
+
+
+void Client::updateTitleBar()
+{
+    if (m_isFullWidth)
+        // If titlebar is parented to widget(), calling
+        // m_titleBar->update() seems to have no effect at all. So we
+        // have to update the whole decoration. This is quite
+        // expensive. :-(
+        widget()->update();
+    else
+        m_titleBar->update();
+}
+
+
+void Client::updateWindowShape()
+{
+    int w=widget()->width();
+    int h=widget()->height();
+
+    if (isMaximized() || compositingActive()) {
+        QRegion mask(0,0,w,h);
+        setMask(mask);
+        return;
+    }
+
+    const ThemeConfig& conf = m_factory->themeConfig();
+    Plasma::FrameSvg* deco = m_factory->frame();
+    if (!deco->hasElementPrefix("decoration-opaque")) {
+        // opaque element is missing: set generic mask
+        w = w - conf.paddingLeft() - conf.paddingRight();
+        h = h - conf.paddingTop() - conf.paddingBottom();
+        QRegion mask(conf.paddingLeft(),conf.paddingTop(),w,h);
+        setMask(mask);
+        return;
+    }
+    deco->setElementPrefix("decoration-opaque");
+    deco->resizeFrame(QSize(w-conf.paddingLeft()-conf.paddingRight(),
+                            h-conf.paddingTop()-conf.paddingBottom()));
+    QRegion mask = deco->mask().translated(conf.paddingLeft(), conf.paddingTop());
+    setMask(mask);
+}
+
 
 } // namespace Chromi
 
