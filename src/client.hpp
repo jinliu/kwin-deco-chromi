@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define CHROMI_CLIENT_H
 
 #include <kdecoration.h>
+#include <QString>
 
 class QWidget;
 
@@ -66,6 +67,7 @@ private:
     QWidget* m_previewWidget;
     int m_activeButton;
     int m_hoverButton;
+    QString m_windowClassClass;
 
     struct ButtonInfo
     {

@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "factory.hpp"
 
 #include <KDebug>
+#include <KWindowInfo>
+#include <KWindowSystem>
 #include <QCursor>
 #include <QCoreApplication>
 #include <QLabel>
@@ -33,7 +35,6 @@ namespace Chromi
 
 
 const int CORNER_SIZE = 20;
-const int TITLEBAR_DEFAULT_WIDTH = 250;
 
 
 Client::Client(KDecorationBridge* bridge, Factory* factory)
@@ -77,7 +78,12 @@ void Client::initTitlebar()
     m_titlebar->setMouseTracking(true);
     
     const ThemeConfig& conf = factory()->themeConfig();
-    m_titlebar->resize(TITLEBAR_DEFAULT_WIDTH, conf.titleHeight()+conf.titleEdgeBottom());
+
+    // get the window class
+    WId w = windowId();
+    KWindowInfo info = KWindowSystem::windowInfo(w, 0, NET::WM2WindowClass);
+    m_windowClassClass = info.windowClassClass();
+    m_titlebar->resize(factory()->getTitlebarWidth(m_windowClassClass), conf.titleHeight()+conf.titleEdgeBottom());
     
     if (isPreview()) {
         m_previewWidget = new QLabel("<center><b>Chromi preview</b></center>", widget());
@@ -294,6 +300,7 @@ bool Client::eventFilter(QObject* o, QEvent* e)
                 QRect r = m_titlebar->geometry();
                 r.setLeft(r.left()+delta);
                 m_titlebar->setGeometry(r);
+                factory()->setTitlebarWidth(m_windowClassClass, r.width());
             } else if (event.modifiers() == Qt::NoModifier)
                 titlebarMouseWheelOperation(event.delta());
             return true;

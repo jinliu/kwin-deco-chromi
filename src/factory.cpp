@@ -23,7 +23,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <KDebug>
 #include <KGlobal>
 #include <KStandardDirs>
+#include <QTimer>
 
+const int DEFAULT_TITLEBAR_WIDTH = 250;
+const int DEFAULT_WRITE_CONFIG_DELAY = 30;
 
 extern "C"
 {
@@ -46,10 +49,19 @@ Factory::Factory()
 
 void Factory::init()
 {
-    KConfig conf("chromirc");
-    KConfigGroup group(&conf, "Engine");
+    m_config.reset(new KConfig("chromirc"));
+    KConfigGroup group(m_config.get(), "Engine");
 
     m_themeName = group.readEntry("ThemeName", "chrome");
+    m_defaultTitlebarWidth = group.readEntry("DefaultTitlebarWidth", DEFAULT_TITLEBAR_WIDTH);
+
+    m_windowConfigGroup.reset(new KConfigGroup(m_config.get(), "Window"));
+    m_writeConfigTimer = new QTimer(this);
+    m_writeConfigTimer->setInterval(group.readEntry("DefaultWriteConfigDelay", DEFAULT_WRITE_CONFIG_DELAY) * 1000);
+    m_writeConfigTimer->setSingleShot(true);
+    connect(
+        m_writeConfigTimer, SIGNAL(timeout()),
+        this, SLOT(writeConfig()));
 
     QString file("aurorae/themes/" + m_themeName + "/decoration.svg");
     QString path = KGlobal::dirs()->findResource("data", file);
@@ -163,6 +175,25 @@ Plasma::FrameSvg* Factory::button(const QString& b)
         return NULL;
 }
 
+
+int Factory::getTitlebarWidth(const QString& key) const
+{
+    return m_windowConfigGroup->readEntry(key, m_defaultTitlebarWidth);
+}
+
+
+void Factory::setTitlebarWidth(const QString& key, int width)
+{
+    m_windowConfigGroup->writeEntry(key, width);
+    if (!m_writeConfigTimer->isActive())
+        m_writeConfigTimer->start();
+}
+
+
+void Factory::writeConfig()
+{
+    m_windowConfigGroup->sync();
+}
 
 } // namespace Chromi
 

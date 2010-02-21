@@ -24,6 +24,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <KDE/Plasma/FrameSvg>
 #include <QHash>
 
+#include <memory>
+
+class KConfig;
+class KConfigGroup;
+
 namespace Chromi
 {
 
@@ -41,8 +46,12 @@ public:
     Plasma::FrameSvg* frame() { return &m_frame; }
     Plasma::FrameSvg* button(const QString& b);
     bool hasButton(const QString& button) const { return m_buttons.contains(button); }
-    
+
     const ThemeConfig& themeConfig() const { return m_themeConfig; }
+    int getTitlebarWidth(const QString& key) const;
+    void setTitlebarWidth(const QString& key, int width);
+public slots:
+    void writeConfig();
 private:
     void init();
     void initButtonFrame(const QString& button);
@@ -50,6 +59,11 @@ private:
     Plasma::FrameSvg m_frame;
     QHash<QString, Plasma::FrameSvg*> m_buttons;
 
+    std::auto_ptr<KConfig> m_config;
+    std::auto_ptr<KConfigGroup> m_windowConfigGroup;
+    int m_defaultTitlebarWidth;
+    QTimer* m_writeConfigTimer;
+    
     QString m_themeName;
     ThemeConfig m_themeConfig;    
 };
