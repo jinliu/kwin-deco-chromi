@@ -146,6 +146,12 @@ Client::Position Client::mousePosition(const QPoint& p) const
             pos = PositionBottom;
     }
 
+    if (pos != PositionCenter && (m_activeButton != -1 || m_hoverButton != -1)) {
+        Client* p = const_cast<Client*>(this);
+        p->m_activeButton = p->m_hoverButton = -1;
+        p->updateTitlebar();
+    }
+    
     return pos;
 }
 
@@ -214,6 +220,7 @@ void Client::iconChange()
 
 void Client::maximizeChange()
 {
+    m_activeButton = m_hoverButton = -1;
     titlebarResizeEvent();
     updateTitlebar();
 }
@@ -465,7 +472,7 @@ bool Client::titlebarMouseEvent(QMouseEvent* event)
                             closeWindow();
                         break;
                     }
-                m_activeButton = -1;
+                m_activeButton = m_hoverButton = -1;
                 updateTitlebar();
                 return true;
             case QEvent::MouseMove:
