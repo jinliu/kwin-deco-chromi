@@ -1,0 +1,40 @@
+This is a titlebar-less decoration, inspired by Google Chrome, and
+Nitrogen minimal mod
+(http://kde-look.org/content/show.php/KDE+4+Nitrogen+minimal+mod?content=109355).
+
+Instead of the traditional full-width title bar, a mini title bar is
+placed at the upper-right corner of the application window --- where
+usually is unused by the application menu bar.
+
+Because notebooks today have very wide screens but limited in height,
+I think this saving in the vertical space can be good.
+
+
+Build
+=====
+
+Please following instructions in the INSTALL file.
+
+
+Usage
+=====
+
+Just use the small bar in the top-right corner as your good old titlebar.
+
+Ctrl-MouseWheel grows/shrinks the bar. So if your window title is
+really long, you can make the bar wider.
+
+
+Theme
+=====
+
+Begin with v0.1, Chromi uses themes from Aurorae Theme Engine
+(http://kde-look.org/content/show.php/Aurorae+Theme+Engine?content=107158).
+You can download dozens of Aurorae themes in the configuration UI.
+
+Chromi ships with Scnd101's "Chrome Aurorae" theme
+(http://kde-look.org/content/show.php/Chrome+Aurorae?content=119106)
+as the default. If you customized the theme SVG files in older
+versions, please move SVG files from /usr/share/kde4/apps/chromi to
+/usr/share/kde4/aurorae/themes/chrome. Chromi no longer load theme
+files from the former directory.
