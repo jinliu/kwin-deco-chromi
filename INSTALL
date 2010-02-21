@@ -1,5 +1,6 @@
-You need Debian package kdelibs6-dev and xorg-dev (or corresponding
-packages in your Linux distribution) to build this.
+You need Debian package kdebase-workspace-dev, kdelibs5-dev and
+xorg-dev (or corresponding packages in your Linux distribution) to
+build this.
 
 Unpack the archive, and run the following commands from a shell:
 
