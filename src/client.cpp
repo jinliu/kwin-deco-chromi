@@ -19,16 +19,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "factory.hpp"
 
 #include <KDebug>
-#include <KWindowInfo>
 #include <KWindowSystem>
 #include <QCursor>
 #include <QCoreApplication>
 #include <QLabel>
 #include <QPainter>
 #include <QPixmap>
-#include <QWidget>
-#include <QX11Info>
-#include <X11/Xlib.h>
+#include <QX11EmbedWidget>
 
 namespace Chromi
 {
@@ -71,7 +68,7 @@ void Client::init()
 
 void Client::initTitlebar()
 {
-    m_titlebar = new QWidget();
+    m_titlebar = new QX11EmbedWidget();
     m_titlebar->setAttribute(Qt::WA_NoSystemBackground);
     m_titlebar->installEventFilter(this);
     // need this for the hover effect
@@ -92,21 +89,7 @@ void Client::initTitlebar()
     } else if (m_isFullWidth)
         m_titlebar->setParent(widget());
     else {
-        // Reparent the titlebar to the application window, so we can
-        // draw over it.
-        WId current = windowId();
-        for (;;)
-        {
-            WId root, parent = 0;
-            WId* children = NULL;
-            uint child_count = 0;
-            XQueryTree(QX11Info::display(), current, &root, &parent, &children, &child_count);
-            if (parent && parent != root && parent != current)
-                current = parent;
-            else
-                break;
-        }
-        XReparentWindow(QX11Info::display(), m_titlebar->winId(), current, 0, 0);
+        m_titlebar->embedInto(w);
         m_titlebar->show();
     }
 }
@@ -355,7 +338,7 @@ void Client::frameResizeEvent()
         m_previewWidget->setGeometry(r.toRect());
         r.moveTo(0, 0);
     } else if (!isMaximized() && !m_isFullWidth)
-        r.translate(-conf.paddingLeft(), -conf.paddingTop());
+        r.translate(-(conf.borderLeft()+conf.paddingLeft()), -(conf.titleEdgeTop()+conf.paddingTop()));
 
     if (m_isFullWidth)
         m_titlebar->resize(r.width(), m_titlebar->height());

@@ -4,7 +4,7 @@ Google Chrome
 Inspired the embedded title bar concept.
 
 Amir Taaki's "Nitrogen minimal mod" (http://kde-look.org/content/show.php/KDE+4+Nitrogen+minimal+mod?content=109355)
-Showed me how to actually embed the title bar. I'd never think it possible before seen it. The window-embedding code in Client::init() is taken from it.
+Showed me how to actually embed the title bar. I'd never think it possible before seen it.
 
 Martin Gräßlin's "Aurorae Theme Engine" (http://kde-look.org/content/show.php/Aurorae+Theme+Engine?content=107158)
 Chromi uses Aurorae themes directly.

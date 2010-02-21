@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <kdecoration.h>
 #include <QString>
 
-class QWidget;
+class QX11EmbedWidget;
 
 namespace Chromi
 {
@@ -63,7 +63,7 @@ protected:
     void updateWindowShape();
 private:
     bool m_isFullWidth;
-    QWidget* m_titlebar;
+    QX11EmbedWidget* m_titlebar;
     QWidget* m_previewWidget;
     int m_activeButton;
     int m_hoverButton;
