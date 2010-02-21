@@ -492,6 +492,19 @@ bool Client::titlebarMouseEvent(QMouseEvent* event)
 
     // doesn't hit any button
 
+    // ctrl-click toggles full/mini
+    if (type==QEvent::MouseButtonPress
+        && button==Qt::LeftButton
+        && (event->modifiers() & Qt::ControlModifier)) {
+        m_isFullWidth = !m_isFullWidth;
+        delete m_titlebar;
+        initTitlebar();
+        frameResizeEvent();
+        updateWindowShape();
+        updateTitlebar();
+        return true;
+    }
+
     // double click on titlebar
     if (type==QEvent::MouseButtonDblClick && button==Qt::LeftButton) {
         titlebarDblClickOperation();
