@@ -4,7 +4,10 @@ target_link_libraries(kwin3_chromi ${KDE4_KDEUI_LIBS} ${KDE4_PLASMA_LIBS} ${KDE4
 
 install(TARGETS kwin3_chromi  DESTINATION ${PLUGIN_INSTALL_DIR})
 install(FILES chromi.desktop  DESTINATION ${DATA_INSTALL_DIR}/kwin)
-install(FILES chromi.knsrc  DESTINATION  ${CONFIG_INSTALL_DIR})
+
+if(NOT EXISTS ${CONFIG_INSTALL_DIR}/aurorae.knsrc)
+  install(FILES aurorae.knsrc  DESTINATION  ${CONFIG_INSTALL_DIR})
+endif(NOT EXISTS ${CONFIG_INSTALL_DIR}/aurorae.knsrc)
 
 ########### config ###############
 set(kwin_chromi_config_PART_SRCS config/config.cpp themeconfig.cpp)

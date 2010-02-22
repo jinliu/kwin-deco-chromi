@@ -620,7 +620,7 @@ void AuroraeConfig::slotInstallNewTheme()
 void AuroraeConfig::slotGHNSClicked()
 {
     KNS::Engine engine(NULL);
-    if (engine.init("chromi.knsrc")) {
+    if (engine.init("aurorae.knsrc")) {
         KNS::Entry::List entries = engine.downloadDialogModal(m_ui);
 
         if (entries.size() > 0) {

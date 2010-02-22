@@ -1,23 +1,52 @@
 HEAD:
+
 * If the initial window width is less than MinimalWindowSize (default is 500), use full titlebar.
 
+* Use Aurorae's KNewStuff file. We used a renamed file (chromi.knsrc
+  vs. aurorae.knsrc), but then themes installed in Chromi is shown as
+  uninstalled in Aurorae, and vice versa. Now Chromi installs the
+  untouched aurorae.knsrc, and only do so when it's not found.
+
+  Note all themes previously installed in Chromi will still shown as
+  uninstalled in Aurorae. You'll need to install them again.
+
+
 0.11:
+
 * Remember titlebar width settings for each window classes.
 
+
 0.1:
+
 * Use Aurorae themes
-* Revert to traditional, full-width titlebar for dialog and toolbox windows.
+
+* Revert to traditional, full-width titlebar for dialog and toolbox
+  windows.
+
 * Ctrl-MouseWheel grows/shrinks titlebar.
-* Transparent theme has system color as the background. So you can set the "titlebar color" in SystemSettings to tweak the tone of the theme. (Thanks for furumaro's suggestion.)
+
+* Transparent theme has system color as the background. So you can set
+  the "titlebar color" in SystemSettings to tweak the tone of the
+  theme. (Thanks for furumaro's suggestion.)
+
 * Smoothed corners of the titlebar. (Thanks for IkaCoast's suggestion.)
+
 
 0.03:
 * Maximize button uses "restore" image when maximized.
+
 * Use hover/pressed image.
+
 * Fixed preview.
 
-0.02:
-Borrowed artwork from Chrome Aurorae (http://kde-look.org/content/show.php/Chrome+Aurorae?content=119106). Button animations still missing.
+
+0.02: 
+
+Borrowed artwork from Chrome Aurorae
+(http://kde-look.org/content/show.php/Chrome+Aurorae?content=119106). Button
+animations still missing.
+
 
 0.01:
+
 A minimal implementation that barely works.
