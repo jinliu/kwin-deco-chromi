@@ -2,7 +2,7 @@ This is a titlebar-less decoration, inspired by Google Chrome, and
 Nitrogen minimal mod
 (http://kde-look.org/content/show.php/KDE+4+Nitrogen+minimal+mod?content=109355).
 
-Instead of the traditional full-width title bar, a mini title bar is
+Instead of the traditional full-width titlebar, a mini-titlebar is
 placed at the upper-right corner of the application window --- where
 usually is unused by the application menu bar.
 
@@ -38,3 +38,19 @@ as the default. If you customized the theme SVG files in older
 versions, please move SVG files from /usr/share/kde4/apps/chromi to
 /usr/share/kde4/aurorae/themes/chrome. Chromi no longer load theme
 files from the former directory.
+
+
+Config File
+===========
+You can change various settings in the [Engine] section in ~/.kde/share/config/chromirc:
+    
+DefaultTitlebarWidth=250
+  The default width of the mini-titlebar.
+
+MinimalWindowWidth=500
+  Window narrower than this will use full titlebar. Set it to -1 to disable this checking.
+
+
+Known Problems
+==============
+* Sometimes when the mouse pointer leaves a button, the hovering effect is not cleared.

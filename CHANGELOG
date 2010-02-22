@@ -1,0 +1,23 @@
+HEAD:
+* If the initial window width is less than MinimalWindowSize (default is 500), use full titlebar.
+
+0.11:
+* Remember titlebar width settings for each window classes.
+
+0.1:
+* Use Aurorae themes
+* Revert to traditional, full-width titlebar for dialog and toolbox windows.
+* Ctrl-MouseWheel grows/shrinks titlebar.
+* Transparent theme has system color as the background. So you can set the "titlebar color" in SystemSettings to tweak the tone of the theme. (Thanks for furumaro's suggestion.)
+* Smoothed corners of the titlebar. (Thanks for IkaCoast's suggestion.)
+
+0.03:
+* Maximize button uses "restore" image when maximized.
+* Use hover/pressed image.
+* Fixed preview.
+
+0.02:
+Borrowed artwork from Chrome Aurorae (http://kde-look.org/content/show.php/Chrome+Aurorae?content=119106). Button animations still missing.
+
+0.01:
+A minimal implementation that barely works.

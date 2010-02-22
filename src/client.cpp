@@ -56,9 +56,22 @@ Client::~Client()
 
 void Client::init()
 {
-    // Fall back to traditional full-width titlebar for all except
-    // top-level windows.
-    if (isModal() || windowType(NET::AllTypesMask) != NET::Normal)
+    // get the window class
+    WId w = windowId();
+    KWindowInfo info = KWindowSystem::windowInfo(w, NET::WMFrameExtents, NET::WM2WindowClass);
+    m_windowClassClass = info.windowClassClass();
+
+    int windowWidth = info.frameGeometry().width();
+    int minimalWindowWidth = factory()->getMinimalWindowWidth();
+    
+    // Fall back to traditional full-width titlebar for:
+    //  1. Modal dialogs
+    //  2. Non-normal windows
+    //  3. Windows narrower than MinimalWindowWidth
+    if (!isPreview() &&
+        (isModal()
+        || windowType(NET::AllTypesMask) != NET::Normal
+         || (minimalWindowWidth>=0 && windowWidth<minimalWindowWidth)))
         m_isFullWidth = true;
 
     createMainWidget();
@@ -71,19 +84,14 @@ void Client::init()
 
 void Client::initTitlebar()
 {
+    const ThemeConfig& conf = factory()->themeConfig();
+    
     m_titlebar = new QWidget();
     m_titlebar->setAttribute(Qt::WA_NoSystemBackground);
     m_titlebar->installEventFilter(this);
     // need this for the hover effect
     m_titlebar->setMouseTracking(true);
-    
-    const ThemeConfig& conf = factory()->themeConfig();
-
-    // get the window class
-    WId w = windowId();
-    KWindowInfo info = KWindowSystem::windowInfo(w, 0, NET::WM2WindowClass);
-    m_windowClassClass = info.windowClassClass();
-    m_titlebar->resize(factory()->getTitlebarWidth(m_windowClassClass), conf.titleHeight()+conf.titleEdgeBottom());
+    m_titlebar->resize(factory()->getTitlebarWidth(m_windowClassClass), conf.titleHeight()+conf.titleEdgeBottom());    
     
     if (isPreview()) {
         m_previewWidget = new QLabel("<center><b>Chromi preview</b></center>", widget());

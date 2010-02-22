@@ -47,6 +47,7 @@ public:
     Plasma::FrameSvg* button(const QString& b);
     bool hasButton(const QString& button) const { return m_buttons.contains(button); }
 
+    int getMinimalWindowWidth() const { return m_minimalWindowWidth; }
     const ThemeConfig& themeConfig() const { return m_themeConfig; }
     int getTitlebarWidth(const QString& key) const;
     void setTitlebarWidth(const QString& key, int width);
@@ -60,12 +61,14 @@ private:
     QHash<QString, Plasma::FrameSvg*> m_buttons;
 
     std::auto_ptr<KConfig> m_config;
-    std::auto_ptr<KConfigGroup> m_windowConfigGroup;
     int m_defaultTitlebarWidth;
+    int m_minimalWindowWidth;
+
+    std::auto_ptr<KConfigGroup> m_windowConfigGroup;
     QTimer* m_writeConfigTimer;
     
     QString m_themeName;
-    ThemeConfig m_themeConfig;    
+    ThemeConfig m_themeConfig;
 };
 
 }
