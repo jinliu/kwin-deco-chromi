@@ -87,7 +87,6 @@ void Factory::init()
     initButtonFrame("alldesktops");
     initButtonFrame("keepabove");
     initButtonFrame("keepbelow");
-    initButtonFrame("shade");
     initButtonFrame("help");
 
     KConfig themeConf("aurorae/themes/" + m_themeName + '/' + m_themeName + "rc", KConfig::FullConfig, "data");
@@ -141,6 +140,7 @@ bool Factory::supports(Ability ability) const
     case AbilityAnnounceColors:
         // buttons
     case AbilityButtonSpacer:
+    case AbilityButtonMenu:
         return true;
     case AbilityButtonMinimize:
         return m_buttons.contains("minimize");
@@ -152,8 +152,6 @@ bool Factory::supports(Ability ability) const
         return m_buttons.contains("keepabove");
     case AbilityButtonBelowOthers:
         return m_buttons.contains("keepbelow");
-    case AbilityButtonShade:
-        return m_buttons.contains("shade");
     case AbilityButtonOnAllDesktops:
         return m_buttons.contains("alldesktops");
     case AbilityButtonHelp:

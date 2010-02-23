@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "client.hpp"
 #include "factory.hpp"
+#include "button.hpp"
 
 #include <KDebug>
 #include <KWindowInfo>
@@ -30,6 +31,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <QX11Info>
 #include <X11/Xlib.h>
 
+#include <algorithm>
+using namespace std;
+
 namespace Chromi
 {
 
@@ -39,11 +43,9 @@ const int CORNER_SIZE = 20;
 
 Client::Client(KDecorationBridge* bridge, Factory* factory)
     : KDecorationUnstable(bridge, factory),
-      m_isFullWidth(false),
       m_titlebar(NULL),
       m_previewWidget(NULL),
-      m_activeButton(-1),
-      m_hoverButton(-1)
+      m_isFullWidth(false)      
 {}
 
 
@@ -56,7 +58,10 @@ Client::~Client()
 
 void Client::init()
 {
-    // get the window class
+    connect(this, SIGNAL(keepAboveChanged(bool)), this, SLOT(keepAboveChange(bool)));
+    connect(this, SIGNAL(keepBelowChanged(bool)), this, SLOT(keepBelowChange(bool)));
+    
+    // get the window class for later use
     WId w = windowId();
     KWindowInfo info = KWindowSystem::windowInfo(w, NET::WMFrameExtents, NET::WM2WindowClass);
     m_windowClassClass = info.windowClassClass();
@@ -85,15 +90,19 @@ void Client::init()
 void Client::initTitlebar()
 {
     const ThemeConfig& conf = factory()->themeConfig();
-    
+
+    delete m_titlebar;
     m_titlebar = new QWidget();
+
+    initButtons();
+    
     m_titlebar->setAttribute(Qt::WA_NoSystemBackground);
-    m_titlebar->installEventFilter(this);
-    // need this for the hover effect
     m_titlebar->setMouseTracking(true);
+    m_titlebar->installEventFilter(this);
     m_titlebar->resize(factory()->getTitlebarWidth(m_windowClassClass), conf.titleHeight()+conf.titleEdgeBottom());    
     
     if (isPreview()) {
+        delete m_previewWidget;
         m_previewWidget = new QLabel("<center><b>Chromi preview</b></center>", widget());
         m_previewWidget->setAutoFillBackground(true);
         m_titlebar->setParent(m_previewWidget);
@@ -116,6 +125,20 @@ void Client::initTitlebar()
         }
         XReparentWindow(QX11Info::display(), m_titlebar->winId(), current, 0, 0);
         m_titlebar->show();
+    }
+}
+
+
+void Client::initButtons()
+{
+    m_buttons.clear();
+    foreach (QChar c, options()->titleButtonsRight()) {
+        char type = c.toAscii();
+        Button* b = new Button(type, this, m_titlebar);
+        if (b->isValid())
+            m_buttons[type] = b;
+        else
+            delete b;
     }
 }
 
@@ -234,22 +257,57 @@ void Client::captionChange()
 
 
 void Client::iconChange()
-{}
+{
+    if (m_buttons.contains(Button::MenuButton))
+        m_buttons[Button::MenuButton]->update();
+}
 
 
 void Client::maximizeChange()
 {
-    titlebarResizeEvent();
     updateTitlebar();
 }
 
 
 void Client::desktopChange()
-{}
+{
+    if (m_buttons.contains(Button::OnAllDesktopsButton))
+        m_buttons[Button::OnAllDesktopsButton]->setChecked(isOnAllDesktops());
+}
 
 
 void Client::shadeChange()
 {}
+
+
+void Client::toggleKeepAbove()
+{
+    setKeepAbove(!keepAbove() );
+}
+
+
+void Client::toggleKeepBelow()
+{
+    setKeepBelow(!keepBelow() );
+}
+
+
+void Client::keepAboveChange(bool above)
+{
+    if (m_buttons.contains(Button::AboveButton))
+        m_buttons[Button::AboveButton]->setChecked(above);
+    if (m_buttons.contains(Button::BelowButton) && m_buttons[Button::BelowButton]->isChecked())
+        m_buttons[Button::BelowButton]->setChecked(false);
+}
+
+
+void Client::keepBelowChange(bool below)
+{
+    if (m_buttons.contains(Button::BelowButton))
+        m_buttons[Button::BelowButton]->setChecked(below);
+    if (m_buttons.contains(Button::AboveButton) && m_buttons[Button::AboveButton]->isChecked())
+        m_buttons[Button::AboveButton]->setChecked(false);
+}
 
 
 bool Client::eventFilter(QObject* o, QEvent* e)
@@ -279,12 +337,13 @@ bool Client::eventFilter(QObject* o, QEvent* e)
             titlebarResizeEvent();
             return true;
         case QEvent::MouseButtonDblClick:
+            if (static_cast<QMouseEvent*>(e)->button() == Qt::LeftButton)
+                titlebarDblClickOperation();
+            return true;
         case QEvent::MouseButtonPress:
         case QEvent::MouseButtonRelease:
         case QEvent::MouseMove:
         {
-            if (titlebarMouseEvent(static_cast<QMouseEvent*>(e)))
-                return true;
             if (m_isFullWidth)
                 return false;
             // Pass mouse event to widget() where moving/window menu
@@ -390,43 +449,8 @@ void Client::titlebarPaintEvent()
                       r.translated(widget()->width()-(conf.paddingRight()+conf.borderRight()+r.width()),
                                    conf.paddingTop()+conf.titleEdgeTop()));
 
-    // buttons
-    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-    for (int i=0; i<3; ++i) {
-        Plasma::FrameSvg* frame = factory()->button(m_button[i].name);
-
-        QString prefix = "active";
-        if (!isActive() && frame->hasElementPrefix("inactive"))
-            prefix = "inactive";
-        if (m_hoverButton == i) {
-            if (frame->hasElementPrefix("hover"))
-                prefix = "hover";
-            if (!isActive() && frame->hasElementPrefix("hover-inactive"))
-                prefix = "hover-inactive";
-        }
-        if (m_activeButton == i) {
-            if (frame->hasElementPrefix("pressed"))
-                prefix = "pressed";
-            if (!isActive() && frame->hasElementPrefix("pressed-inactive"))
-                prefix = "pressed-inactive";
-        }
-        if (!m_button[i].enabled) {
-            if (frame->hasElementPrefix("deactivated"))
-                prefix = "deactivated";
-            if (!isActive() && frame->hasElementPrefix("deactivated-inactive"))
-                prefix = "deactivated-inactive";
-        }
-        frame->setElementPrefix(prefix);
-
-        frame->resizeFrame(m_button[i].paintRect.size());
-        frame->paintFrame(&painter, m_button[i].paintRect.topLeft());
-    }
-
     // caption
-    if (m_isFullWidth)
-        r.setLeft(conf.titleBorderLeft());
-    r.setRight(m_button[0].paintRect.left()-conf.titleBorderRight());
-    r.setHeight(conf.titleHeight()+conf.titleEdgeBottom());
+    r = m_titleRect;
     painter.setFont(options()->font(isActive()));
     int textOpt = Qt::AlignRight | conf.verticalAlignment() | Qt::TextSingleLine;
     if (conf.useTextShadow()) {
@@ -459,70 +483,6 @@ void Client::titlebarPaintEvent()
 }
 
 
-bool Client::titlebarMouseEvent(QMouseEvent* event)
-{
-    QEvent::Type type = event->type();
-    QPoint pos = event->pos();
-    Qt::MouseButton button = event->button();
-
-    // on buttons?
-    for (int i=0; i<3; ++i) {
-        if (m_button[i].mouseRect.contains(pos)) { // hit button#i
-            switch (type) {
-            case QEvent::MouseButtonPress:
-                if (m_button[i].enabled) {
-                    m_activeButton = i;
-                    updateTitlebar();
-                }
-                return true;
-            case QEvent::MouseButtonRelease:
-                if (m_button[i].enabled && m_activeButton == i)
-                    switch (i) {
-                    case 0: // minimize
-                        if (button == Qt::LeftButton)
-                            minimize();
-                        break;
-                    case 1: // maximize
-                        maximize(button);
-                        break;
-                    case 2: // close
-                        if (button == Qt::LeftButton)
-                            closeWindow();
-                        break;
-                    }
-                m_activeButton = -1;
-                updateTitlebar();
-                return true;
-            case QEvent::MouseMove:
-                if (m_hoverButton != i) {
-                    m_hoverButton = i;
-                    updateTitlebar();
-                }
-                return false;
-            default:
-                return false;
-            }
-        }
-    }
-
-    // doesn't hit any button
-
-    // double click on titlebar
-    if (type==QEvent::MouseButtonDblClick && button==Qt::LeftButton) {
-        titlebarDblClickOperation();
-        return true;
-    }
-
-    // clear pressed/hover image
-    if (m_activeButton!=-1 || m_hoverButton!=-1) {
-        m_activeButton = m_hoverButton = -1;
-        updateTitlebar();
-    }
-
-    return false;
-}
-
-
 bool Client::isMaximized() const
 {
     return maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows();
@@ -531,33 +491,41 @@ bool Client::isMaximized() const
 
 void Client::titlebarResizeEvent()
 {
+    // Shape the left edge of titlebar
     if (!m_isFullWidth) {
-        // Shape the left edge of titlebar
         int w=m_titlebar->width(), h=m_titlebar->height();
         QPolygon p;
         p.putPoints(0, 6, 0,0, w,0, w,h, h/2+6,h, h/2+1,h-3, 3,2);
         m_titlebar->setMask(p);
     } else
         m_titlebar->clearMask();
-    
-    m_button[0].name = "minimize";
-    m_button[0].enabled = isMinimizable();
-    m_button[1].name = isMaximized()&&factory()->hasButton("restore")?"restore":"maximize";
-    m_button[1].enabled = isMaximizable();
-    m_button[2].name = "close";
-    m_button[2].enabled = isCloseable();
 
+    // layout buttons
     const ThemeConfig& conf = factory()->themeConfig();
-    QRect r(m_titlebar->width()-(conf.buttonWidth()+conf.buttonSpacing()),
-            conf.buttonMarginTop(), conf.buttonWidth(), conf.buttonHeight());
-    for (int i=2; i>=0; --i) {
-        m_button[i].paintRect = m_button[i].mouseRect = r;
-        if (isMaximized())
-            m_button[i].mouseRect.setTop(0);
-        r.translate(-(conf.buttonWidth()+conf.buttonSpacing()), 0);
+    QString buttons = options()->titleButtonsRight();
+    int x = m_titlebar->width();
+    int y = conf.buttonMarginTop();
+    if (m_isFullWidth)
+        x -= max(conf.titleEdgeRight()-conf.borderRight(), 0);
+    for (int i=buttons.size()-1; i>=0; --i) {
+        char type = buttons[i].toAscii();
+        if (type == Button::ExplicitSpacer)
+            x -= conf.explicitButtonSpacer();
+        else if (!m_buttons.contains(type))
+            continue;
+        else {
+            Button* b = m_buttons[type];
+            x -= b->width();
+            b->move(x, y);
+        }
+        if (i != 0)
+            x -= conf.buttonSpacing();
     }
-    if (isMaximized())
-        m_button[2].mouseRect.setRight(m_titlebar->width());
+
+    // caption rect
+    m_titleRect.setTopLeft(QPointF(0, 0));
+    m_titleRect.setWidth(x - conf.titleBorderRight());
+    m_titleRect.setHeight(conf.titleHeight());
 }
 
 

@@ -53,4 +53,4 @@ MinimalWindowWidth=500
 
 Known Problems
 ==============
-* Sometimes when the mouse pointer leaves a button, the hovering effect is not cleared.
+* Full-width titlebar has no hovering effect.

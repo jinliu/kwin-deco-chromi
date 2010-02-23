@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define CHROMI_CLIENT_H
 
 #include <kdecoration.h>
+#include <QHash>
+#include <QRect>
 #include <QString>
 
 class QWidget;
@@ -27,6 +29,7 @@ namespace Chromi
 {
 
 class Factory;
+class Button;
 
 class Client : public KDecorationUnstable
 {
@@ -50,36 +53,33 @@ public:
     /*override*/ void padding(int& left, int& right, int& top, int& bottom) const;
     /*override*/ bool eventFilter(QObject* o, QEvent* e);
     /*override*/ Factory* factory() const;
+
+    bool isMaximized() const;
+public slots:
+    void toggleKeepAbove();
+    void toggleKeepBelow();
 protected:
+    void initTitlebar();
+    void initButtons();
+    
     void framePaintEvent();
     void frameResizeEvent();
     void titlebarPaintEvent();
     void titlebarResizeEvent();
-    bool titlebarMouseEvent(QMouseEvent* event);
 
-    bool isMaximized() const;
-    void initTitlebar();
     void updateTitlebar();
     void updateWindowShape();
+protected slots:
+    void keepAboveChange(bool above);
+    void keepBelowChange(bool below);
 private:
-    bool m_isFullWidth;
     QWidget* m_titlebar;
     QWidget* m_previewWidget;
-    int m_activeButton;
-    int m_hoverButton;
-    QString m_windowClassClass;
+    QHash<char, Button*> m_buttons;
 
-    struct ButtonInfo
-    {
-        const char* name;
-        bool enabled;
-        // Where to paint the button image
-        QRect paintRect;
-        // Where mouse click is effective. Can be larger than
-        // paintRect, e.g. when maximized.
-        QRect mouseRect;
-    };
-    ButtonInfo m_button[3];
+    bool m_isFullWidth;
+    QRectF m_titleRect;
+    QString m_windowClassClass;
 };
 
 }

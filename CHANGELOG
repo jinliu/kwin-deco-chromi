@@ -1,4 +1,10 @@
-HEAD:
+0.2 (2010-02-23):
+
+* Support customized button positions.
+  Only buttons in the right side are shown.
+  App icon and shade buttons are not supported yet.
+
+0.12:
 
 * If the initial window width is less than MinimalWindowSize (default is 500), use full titlebar.
 
