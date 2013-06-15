@@ -35,9 +35,13 @@ KDE_EXPORT KDecorationFactory* create_factory()
 {
     return new Chromi::Factory();
 }
+
+KWIN_EXPORT int decoration_version() {
+    return KWIN_DECORATION_API_VERSION;
+}
 }
 
-                              
+
 namespace Chromi
 {
 
