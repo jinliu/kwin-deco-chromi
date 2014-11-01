@@ -48,9 +48,11 @@ public:
     bool hasButton(const QString& button) const { return m_buttons.contains(button); }
 
     int getMinimalWindowWidth() const { return m_minimalWindowWidth; }
+    bool noText() const { return m_noText; }
     const ThemeConfig& themeConfig() const { return m_themeConfig; }
     int getTitlebarWidth(const QString& key) const;
     void setTitlebarWidth(const QString& key, int width);
+
 public slots:
     void writeConfig();
 private:
@@ -63,6 +65,7 @@ private:
     std::auto_ptr<KConfig> m_config;
     int m_defaultTitlebarWidth;
     int m_minimalWindowWidth;
+    bool m_noText;
 
     std::auto_ptr<KConfigGroup> m_windowConfigGroup;
     QTimer* m_writeConfigTimer;

@@ -433,52 +433,64 @@ void Client::frameResizeEvent()
 void Client::titlebarPaintEvent()
 {
     QPixmap buffer(m_titlebar->size());
+    buffer.fill(Qt::transparent);
+
     QPainter painter(&buffer);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+
     const ThemeConfig& conf = factory()->themeConfig();
 
     // background
     QRectF r(buffer.rect());
-    painter.fillRect(r, options()->color(ColorTitleBar, isActive()));
+    QRectF rt = r.translated(widget()->width()-(conf.paddingRight()+conf.borderRight()+r.width()), conf.paddingTop()+conf.titleEdgeTop());
+    //painter.fillRect(r, options()->color(ColorTitleBar, isActive()));
     
     Plasma::FrameSvg* frame = factory()->frame();
     frame->setElementPrefix("decoration");
     if (!isActive() && frame->hasElementPrefix("decoration-inactive"))
         frame->setElementPrefix("decoration-inactive");
     frame->resizeFrame(widget()->size());
-    frame->paintFrame(&painter, r,
-                      r.translated(widget()->width()-(conf.paddingRight()+conf.borderRight()+r.width()),
-                                   conf.paddingTop()+conf.titleEdgeTop()));
+    frame->paintFrame(&painter, r, rt);
 
     // caption
-    r = m_titleRect;
-    painter.setFont(options()->font(isActive()));
-    int textOpt = Qt::AlignRight | conf.verticalAlignment() | Qt::TextSingleLine;
-    if (conf.useTextShadow()) {
-        // shadow code is inspired by Qt FAQ: How can I draw shadows behind text?
-        // see http://www.qtsoftware.com/developer/faqs/faq.2007-07-27.3052836051
-        painter.save();
-        if (isActive())
-            painter.setPen(conf.activeTextShadowColor());
-        else
-            painter.setPen(conf.inactiveTextShadowColor());
-        int dx = conf.textShadowOffsetX();
-        int dy = conf.textShadowOffsetY();
-        painter.setOpacity(0.5);
-        painter.drawText(r.translated(dx, dy), textOpt, caption());
-        painter.setOpacity(0.2);
-        painter.drawText(r.translated(dx+1, dy), textOpt, caption());
-        painter.drawText(r.translated(dx-1, dy), textOpt, caption());
-        painter.drawText(r.translated(dx, dy+1), textOpt, caption());
-        painter.drawText(r.translated(dx, dy-1), textOpt, caption());
-        painter.restore();
-    }
-    if (isActive())
-        painter.setPen(conf.activeTextColor());
-    else
-        painter.setPen(conf.inactiveTextColor());
-    painter.drawText(r, textOpt, caption());
+    if(!(factory()->noText()) || m_isFullWidth) {
 
-    // blt to the real surface
+      r = m_titleRect;
+      painter.setFont(options()->font(isActive()));
+      int textOpt;
+
+      if(!m_isFullWidth)
+          textOpt = Qt::AlignRight | conf.verticalAlignment() | Qt::TextSingleLine;
+      else
+          textOpt = conf.alignment() | conf.verticalAlignment() | Qt::TextSingleLine;
+
+      if(conf.useTextShadow()) {
+          painter.save();
+          if (isActive())
+              painter.setPen(conf.activeTextShadowColor());
+          else
+              painter.setPen(conf.inactiveTextShadowColor());
+          int dx = conf.textShadowOffsetX();
+          int dy = conf.textShadowOffsetY();
+          painter.setOpacity(0.5);
+          painter.drawText(r.translated(dx, dy), textOpt, caption());
+          painter.setOpacity(0.2);
+          painter.drawText(r.translated(dx+1, dy), textOpt, caption());
+          painter.drawText(r.translated(dx-1, dy), textOpt, caption());
+          painter.drawText(r.translated(dx, dy+1), textOpt, caption());
+          painter.drawText(r.translated(dx, dy-1), textOpt, caption());
+          painter.restore();
+      }
+
+      if (isActive())
+          painter.setPen(conf.activeTextColor());
+      else
+          painter.setPen(conf.inactiveTextColor());
+
+      painter.drawText(r, textOpt, caption());
+
+    }
+
     QPainter(m_titlebar).drawPixmap(0, 0, buffer);
 }
 
