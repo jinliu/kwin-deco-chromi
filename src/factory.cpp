@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 const int DEFAULT_TITLEBAR_WIDTH = 250;
 const int DEFAULT_MINIMAL_WINDOW_WIDTH = DEFAULT_TITLEBAR_WIDTH * 2;
 const int DEFAULT_WRITE_CONFIG_DELAY = 30;
+const bool DEFAULT_NO_TEXT = false;
 
 extern "C"
 {
@@ -60,6 +61,7 @@ void Factory::init()
     m_themeName = group.readEntry("ThemeName", "chrome");
     m_defaultTitlebarWidth = group.readEntry("DefaultTitlebarWidth", DEFAULT_TITLEBAR_WIDTH);
     m_minimalWindowWidth = group.readEntry("MinimalWindowWidth", DEFAULT_MINIMAL_WINDOW_WIDTH);
+    m_noText = group.readEntry("NoText", DEFAULT_NO_TEXT);
 
     m_windowConfigGroup.reset(new KConfigGroup(m_config.get(), "Window"));
     m_writeConfigTimer = new QTimer(this);
